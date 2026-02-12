@@ -49,6 +49,7 @@ async def start(message: Message):
 
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
+    logger.info(f"🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ: {message.web_app_data.data}")
     try:
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
@@ -56,6 +57,7 @@ async def web_app_handler(message: Message):
 
         logger.info(f"📥 Получен запрос: {action} от {user_id}")
         logger.info(f"📦 Данные: {data}")
+
 
         if action == 'get_products':
             products = await db.get_products()
