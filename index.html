@@ -93,6 +93,14 @@
             box-shadow: 0 12px 24px rgba(74, 111, 165, 0.1);
         }
 
+        .product-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin-bottom: 16px;
+        }
+
         .product-name {
             font-size: 20px;
             font-weight: 700;
@@ -244,14 +252,43 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.02);
         }
 
+        /* Геолокация */
+        .location-section {
+            margin-top: 20px;
+        }
+
+        .location-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .location-btn {
+            flex: 1;
+            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .location-btn:hover {
+            transform: scale(0.98);
+            box-shadow: 0 8px 16px rgba(74, 111, 165, 0.3);
+        }
+
         .location-input {
             width: 100%;
             padding: 16px;
             border: 2px solid #eef2f5;
-            border-radius: 20px;
-            font-size: 16px;
-            margin: 20px 0;
+            border-radius: 16px;
+            font-size: 15px;
             transition: border 0.2s;
+            margin-bottom: 15px;
         }
 
         .location-input:focus {
@@ -265,7 +302,7 @@
             background: linear-gradient(135deg, #51c585 0%, #3aa36a 100%);
             color: white;
             border: none;
-            border-radius: 20px;
+            border-radius: 16px;
             font-size: 18px;
             font-weight: 600;
             cursor: pointer;
@@ -309,6 +346,14 @@
         .status-completed {
             background: #e1f7e1;
             color: #2d7a4b;
+        }
+
+        .order-items {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 12px;
+            margin: 12px 0;
+            font-size: 14px;
         }
 
         /* Кнопка корзины */
@@ -361,6 +406,12 @@
             padding: 40px;
             color: #4a6fa5;
         }
+
+        .or-divider {
+            color: #6b7b8c;
+            align-self: center;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -372,7 +423,7 @@
             <button class="nav-btn" onclick="showPage('orders')">📋 Заказы</button>
         </div>
 
-        <!-- Страница с товарами -->
+        <!-- Главная страница -->
         <div id="mainPage">
             <div class="header">
                 <h1>🍦 Мороженко</h1>
@@ -390,11 +441,22 @@
             </div>
             <div id="cartItems"></div>
             <div id="cartTotal" class="cart-total">0 ₽</div>
-            <input type="text" id="location" class="location-input"
-                   placeholder="📍 Введите адрес доставки">
-            <button class="checkout-btn" onclick="checkout()">
-                ✅ Оформить заказ
-            </button>
+
+            <div class="location-section">
+                <div class="location-buttons">
+                    <button onclick="getLocation()" class="location-btn">
+                        📍 Отправить геолокацию
+                    </button>
+                    <span class="or-divider">или</span>
+                </div>
+
+                <input type="text" id="location" class="location-input"
+                       placeholder="✏️ Введите адрес доставки">
+
+                <button class="checkout-btn" onclick="checkout()">
+                    ✅ Оформить заказ
+                </button>
+            </div>
         </div>
 
         <!-- Страница заказов -->
@@ -422,28 +484,28 @@
         let products = [];
         let cart = [];
 
-        // Отправка данных в бота
+        // ============== ОТПРАВКА ДАННЫХ В БОТА ==============
         async function sendToBot(action, data = {}) {
             const payload = JSON.stringify({action, ...data});
             tg.sendData(payload);
         }
 
-        // Получение товаров
+        // ============== ЗАГРУЗКА ТОВАРОВ ==============
         async function loadProducts() {
             sendToBot('get_products');
         }
 
-        // Получение корзины
+        // ============== ЗАГРУЗКА КОРЗИНЫ ==============
         async function loadCart() {
             sendToBot('get_cart');
         }
 
-        // Получение заказов
+        // ============== ЗАГРУЗКА ЗАКАЗОВ ==============
         async function loadOrders() {
             sendToBot('get_orders');
         }
 
-        // Обработка ответов от бота
+        // ============== ОБРАБОТКА ОТВЕТОВ ==============
         tg.onEvent('webAppData', async (event) => {
             const data = JSON.parse(event.data);
 
@@ -461,22 +523,26 @@
             }
         });
 
-        // Показать товары
+        // ============== ОТОБРАЖЕНИЕ ТОВАРОВ ==============
         function renderProducts() {
             const container = document.getElementById('products');
 
             if (products.length === 0) {
-                container.innerHTML = '<div class="empty-state">🍦 Товары закончились</div>';
+                container.innerHTML = '<div class="empty-state">🍦 Товары временно закончились</div>';
                 return;
             }
 
             container.innerHTML = products.map(p => `
                 <div class="product-card">
+                    <img src="${p.image_url || 'https://via.placeholder.com/300x200?text=🍦'}"
+                         alt="${p.name}"
+                         class="product-image"
+                         onerror="this.src='https://via.placeholder.com/300x200?text=🍦'">
                     <div class="product-name">${p.name}</div>
                     <div class="product-price">${p.price} ₽</div>
                     <div class="product-stock">В наличии: ${p.stock} шт.</div>
                     <div class="quantity-control">
-                        <button class="qty-btn" onclick="decreaseQty(${p.id})">-</button>
+                        <button class="qty-btn" onclick="decreaseQty(${p.id})">−</button>
                         <span id="qty_${p.id}" class="quantity">1</span>
                         <button class="qty-btn" onclick="increaseQty(${p.id})">+</button>
                     </div>
@@ -487,7 +553,7 @@
             `).join('');
         }
 
-        // Управление количеством
+        // ============== УПРАВЛЕНИЕ КОЛИЧЕСТВОМ ==============
         function increaseQty(id) {
             const el = document.getElementById(`qty_${id}`);
             const product = products.find(p => p.id === id);
@@ -505,7 +571,7 @@
             }
         }
 
-        // Добавление в корзину
+        // ============== ДОБАВЛЕНИЕ В КОРЗИНУ ==============
         function addToCart(productId) {
             const qty = parseInt(document.getElementById(`qty_${productId}`).innerText);
             sendToBot('add_to_cart', {product_id: productId, quantity: qty});
@@ -513,7 +579,7 @@
             setTimeout(() => loadCart(), 500);
         }
 
-        // Показать корзину
+        // ============== ОТОБРАЖЕНИЕ КОРЗИНЫ ==============
         function renderCart() {
             const container = document.getElementById('cartItems');
 
@@ -538,9 +604,7 @@
                                 <span>${item.quantity}</span>
                                 <button onclick="updateCart(${item.id}, 1)">+</button>
                             </div>
-                            <button class="remove-btn" onclick="updateCart(${item.id}, -1000)">
-                                🗑️
-                            </button>
+                            <button class="remove-btn" onclick="updateCart(${item.id}, -1000)">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -549,19 +613,50 @@
             document.getElementById('cartTotal').innerText = `${total} ₽`;
         }
 
-        // Обновление корзины
+        // ============== ОБНОВЛЕНИЕ КОРЗИНЫ ==============
         function updateCart(productId, change) {
             sendToBot('update_cart', {product_id: productId, change: change});
             setTimeout(() => loadCart(), 200);
         }
 
-        // Обновление счетчика
+        // ============== СЧЕТЧИК КОРЗИНЫ ==============
         function updateCartCount() {
             const count = cart.reduce((sum, item) => sum + item.quantity, 0);
             document.getElementById('cartCount').innerText = count;
         }
 
-        // Оформление заказа
+        // ============== ГЕОЛОКАЦИЯ ==============
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+
+                        try {
+                            const response = await fetch(
+                                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`
+                            );
+                            const data = await response.json();
+                            const address = data.display_name || `${lat}, ${lon}`;
+
+                            document.getElementById('location').value = address;
+                            tg.showAlert(`📍 Адрес: ${address.slice(0, 50)}...`);
+                        } catch (error) {
+                            document.getElementById('location').value = `${lat}, ${lon}`;
+                            tg.showAlert(`📍 Координаты: ${lat}, ${lon}`);
+                        }
+                    },
+                    (error) => {
+                        tg.showAlert('❌ Не удалось получить геолокацию. Введите адрес вручную.');
+                    }
+                );
+            } else {
+                tg.showAlert('❌ Геолокация не поддерживается');
+            }
+        }
+
+        // ============== ОФОРМЛЕНИЕ ЗАКАЗА ==============
         function checkout() {
             const location = document.getElementById('location').value;
 
@@ -580,7 +675,7 @@
             }, 1000);
         }
 
-        // Показать заказы
+        // ============== ОТОБРАЖЕНИЕ ЗАКАЗОВ ==============
         function renderOrders(orders) {
             const container = document.getElementById('orders');
 
@@ -593,47 +688,58 @@
                 const statusClass = order.status === 'completed' ? 'status-completed' : 'status-pending';
                 const statusText = order.status === 'completed' ? '✅ Выполнен' : '⏳ В обработке';
 
+                const itemsList = order.items ? order.items.map(item =>
+                    `🍦 ${item.name} x${item.quantity} = ${item.price * item.quantity}₽`
+                ).join('<br>') : '🔄 Загрузка...';
+
                 return `
                     <div class="order-card">
                         <div class="order-header">
                             <span class="order-id">Заказ #${order.id}</span>
                             <span class="order-status ${statusClass}">${statusText}</span>
                         </div>
-                        <div>📍 ${order.location}</div>
-                        <div>💰 ${order.total} ₽</div>
-                        <div>📅 ${new Date(order.date).toLocaleString('ru-RU')}</div>
+                        <div><strong>📍 Адрес:</strong> ${order.location}</div>
+                        <div class="order-items">
+                            <strong>🛍 Состав заказа:</strong><br>
+                            ${itemsList}
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><strong>💰 Сумма:</strong> ${order.total} ₽</span>
+                            <span><strong>📅 Дата:</strong> ${new Date(order.date).toLocaleString('ru-RU')}</span>
+                        </div>
                     </div>
                 `;
             }).join('');
         }
 
-        // Переключение страниц
+        // ============== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ==============
         function showPage(page) {
-            const pages = ['mainPage', 'cartPage', 'ordersPage'];
-            pages.forEach(p => {
-                document.getElementById(p).style.display = 'none';
-            });
+            const mainPage = document.getElementById('mainPage');
+            const cartPage = document.getElementById('cartPage');
+            const ordersPage = document.getElementById('ordersPage');
+            const navBtns = document.querySelectorAll('.nav-btn');
 
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            mainPage.style.display = 'none';
+            cartPage.style.display = 'none';
+            ordersPage.style.display = 'none';
+            navBtns.forEach(btn => btn.classList.remove('active'));
 
             if (page === 'main') {
-                document.getElementById('mainPage').style.display = 'block';
-                document.querySelectorAll('.nav-btn')[0].classList.add('active');
+                mainPage.style.display = 'block';
+                navBtns[0].classList.add('active');
                 loadProducts();
             } else if (page === 'cart') {
-                document.getElementById('cartPage').style.display = 'block';
-                document.querySelectorAll('.nav-btn')[1].classList.add('active');
+                cartPage.style.display = 'block';
+                navBtns[1].classList.add('active');
                 loadCart();
             } else if (page === 'orders') {
-                document.getElementById('ordersPage').style.display = 'block';
-                document.querySelectorAll('.nav-btn')[2].classList.add('active');
+                ordersPage.style.display = 'block';
+                navBtns[2].classList.add('active');
                 loadOrders();
             }
         }
 
-        // Загрузка при старте
+        // ============== ЗАГРУЗКА ПРИ СТАРТЕ ==============
         window.onload = () => {
             loadProducts();
             loadCart();

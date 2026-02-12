@@ -6,7 +6,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, W
 from aiogram.filters import CommandStart
 from config import BOT_TOKEN, SELLER_ID, ADMIN_IDS
 from database import Database
-from admin import router as admin_router
+from admin import router as admin_router, admin_panel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,13 +17,12 @@ db = Database()
 
 dp.include_router(admin_router)
 
-# 🌟 URL твоего Mini App (ЗАМЕНИ НА СВОЙ!)
-WEBAPP_URL = "https://p4ostopen-jpg.github.io/telegram-shop-bot/web/"
+# 🌟 ТВОЯ РАБОЧАЯ ССЫЛКА!
+WEBAPP_URL = "https://p4ostopen-jpg.github.io/MiniApp/"
 
 
 @dp.message(CommandStart())
 async def start(message: Message):
-    """Отправляем кнопку с Mini App"""
     await db.add_user(
         message.from_user.id,
         message.from_user.username,
@@ -38,7 +37,6 @@ async def start(message: Message):
         [InlineKeyboardButton(text="📋 Мои заказы", callback_data="my_orders")]
     ])
 
-    # Добавляем кнопку админки только для админов
     if message.from_user.id in ADMIN_IDS:
         keyboard.inline_keyboard.append(
             [InlineKeyboardButton(text="👨‍💼 Админ-панель", callback_data="admin_panel")]
@@ -51,10 +49,8 @@ async def start(message: Message):
     )
 
 
-# 🌟 ПОЛУЧАЕМ ДАННЫЕ ИЗ MINI APP
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
-    """Обрабатываем данные из Mini App"""
     try:
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
@@ -62,10 +58,7 @@ async def web_app_handler(message: Message):
 
         if action == 'get_products':
             products = await db.get_products()
-            await message.answer(json.dumps([
-                {'id': p['id'], 'name': p['name'], 'price': p['price'], 'stock': p['quantity']}
-                for p in products
-            ], ensure_ascii=False))
+            await message.answer(json.dumps(products, ensure_ascii=False, default=str))
 
         elif action == 'get_cart':
             cart = await db.get_cart(user_id)
@@ -99,7 +92,6 @@ async def web_app_handler(message: Message):
 
             order_id = await db.create_order(user_id, location)
             if order_id:
-                # Уведомление продавцу
                 await bot.send_message(
                     SELLER_ID,
                     f"🆕 Новый заказ #{order_id}\n"
@@ -112,11 +104,25 @@ async def web_app_handler(message: Message):
 
         elif action == 'get_orders':
             orders = await db.get_user_orders(user_id)
-            await message.answer(json.dumps([
-                {'id': o['id'], 'total': o['total'], 'status': o['status'],
-                 'date': o['created_at'], 'location': o['location']}
-                for o in orders
-            ], ensure_ascii=False))
+            detailed_orders = []
+            for order in orders:
+                items = await db.get_order_details(order['id'])
+                detailed_orders.append({
+                    'id': order['id'],
+                    'total': order['total'],
+                    'status': order['status'],
+                    'date': order['created_at'],
+                    'location': order['location'],
+                    'items': [
+                        {
+                            'name': item['product_name'],
+                            'quantity': item['quantity'],
+                            'price': item['price']
+                        }
+                        for item in items
+                    ]
+                })
+            await message.answer(json.dumps(detailed_orders, ensure_ascii=False))
 
     except Exception as e:
         logger.error(f"Mini App error: {e}")
@@ -125,7 +131,6 @@ async def web_app_handler(message: Message):
 
 @dp.callback_query(F.data == "my_orders")
 async def my_orders(callback: CallbackQuery):
-    """Показываем заказы"""
     orders = await db.get_user_orders(callback.from_user.id)
 
     if not orders:
@@ -147,9 +152,6 @@ async def my_orders(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "admin_panel")
 async def admin_shortcut(callback: CallbackQuery):
-    """Быстрый доступ к админке"""
-    from admin import admin_panel  # Импортируем здесь чтобы избежать циклического импорта
-
     if callback.from_user.id in ADMIN_IDS:
         await admin_panel(callback.message)
     else:
@@ -157,7 +159,6 @@ async def admin_shortcut(callback: CallbackQuery):
 
 
 async def main():
-    """Запуск бота"""
     await db.create_tables()
 
     # Добавляем тестовые товары
@@ -169,7 +170,7 @@ async def main():
         await db.add_product("Карамельное", 130, 35)
         logger.info("✅ Тестовые товары добавлены")
     except Exception as e:
-        logger.info(f"📦 Товары уже существуют: {e}")
+        logger.info(f"📦 Товары уже существуют")
 
     logger.info("🤖 Бот запущен!")
     await dp.start_polling(bot)

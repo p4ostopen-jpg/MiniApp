@@ -116,8 +116,16 @@ class Database:
                                  quantity
                                  INTEGER,
                                  price
-                                 INTEGER
+                                 INTEGER,
+                                 FOREIGN
+                                 KEY
+                             (
+                                 order_id
+                             ) REFERENCES orders
+                             (
+                                 id
                              )
+                                 )
                              ''')
 
             await db.commit()
@@ -137,7 +145,16 @@ class Database:
             cursor = await db.execute(
                 'SELECT * FROM products WHERE is_available = 1 AND quantity > 0'
             )
-            return await cursor.fetchall()
+            products = await cursor.fetchall()
+
+            # Добавляем URL фото
+            result = []
+            for p in products:
+                p = dict(p)
+                # Ссылка на фото в GitHub Pages
+                p['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/images/{p['name'].lower()}.jpg"
+                result.append(p)
+            return result
 
     async def get_cart(self, user_id):
         async with aiosqlite.connect(self.db_path) as db:
@@ -152,7 +169,6 @@ class Database:
 
     async def add_to_cart(self, user_id, product_id, quantity=1):
         async with aiosqlite.connect(self.db_path) as db:
-            # Проверяем есть ли уже
             cursor = await db.execute(
                 'SELECT quantity FROM cart WHERE user_id = ? AND product_id = ?',
                 (user_id, product_id)
@@ -197,35 +213,30 @@ class Database:
 
     async def create_order(self, user_id, location):
         async with aiosqlite.connect(self.db_path) as db:
-            # Получаем корзину
             cart = await self.get_cart(user_id)
             if not cart:
                 return None
 
             total = sum(item['price'] * item['quantity'] for item in cart)
 
-            # Создаем заказ
             cursor = await db.execute('''
                                       INSERT INTO orders (user_id, location, total)
                                       VALUES (?, ?, ?)
                                       ''', (user_id, location, total))
             order_id = cursor.lastrowid
 
-            # Добавляем товары в заказ
             for item in cart:
                 await db.execute('''
                                  INSERT INTO order_items (order_id, product_name, quantity, price)
                                  VALUES (?, ?, ?, ?)
                                  ''', (order_id, item['name'], item['quantity'], item['price']))
 
-                # Обновляем остатки
                 await db.execute('''
                                  UPDATE products
                                  SET quantity = quantity - ?
                                  WHERE id = ?
                                  ''', (item['quantity'], item['product_id']))
 
-            # Очищаем корзину
             await db.execute('DELETE FROM cart WHERE user_id = ?', (user_id,))
             await db.commit()
 
@@ -242,6 +253,16 @@ class Database:
                                       ''', (user_id,))
             return await cursor.fetchall()
 
+    async def get_order_details(self, order_id):
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute('''
+                                      SELECT *
+                                      FROM order_items
+                                      WHERE order_id = ?
+                                      ''', (order_id,))
+            return await cursor.fetchall()
+
     async def add_product(self, name, price, quantity):
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute('''
@@ -249,31 +270,3 @@ class Database:
                 VALUES (?, ?, ?)
             ''', (name, price, quantity))
             await db.commit()
-
-    async def update_product_quantity(self, product_id, quantity):
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute('''
-                             UPDATE products
-                             SET quantity = ?
-                             WHERE id = ?
-                             ''', (quantity, product_id))
-            await db.commit()
-
-    async def delete_product(self, product_id):
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute('''
-                             UPDATE products
-                             SET is_available = 0
-                             WHERE id = ?
-                             ''', (product_id,))
-            await db.commit()
-
-    async def get_all_orders(self):
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            cursor = await db.execute('''
-                                      SELECT *
-                                      FROM orders
-                                      ORDER BY created_at DESC
-                                      ''')
-            return await cursor.fetchall()
