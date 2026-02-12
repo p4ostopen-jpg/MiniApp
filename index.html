@@ -190,25 +190,23 @@
 
         // ========== ОТПРАВКА ДАННЫХ В БОТА ==========
         function sendToBot(action, data = {}) {
-            const payload = JSON.stringify({action, ...data});
+        const payload = JSON.stringify({action, ...data});
 
-            logToConsole('info', `📤 ОТПРАВКА В БОТА:`);
-            console.log(`   Действие: ${action}`);
-            console.log(`   Данные:`, data);
-            console.log(`   Полный payload: ${payload}`);
+        logToConsole('info', `📤 ОТПРАВКА В БОТА:`);console.log(`   Действие: ${action}`);
 
-            try {
-                tg.sendData(payload);
-                logToConsole('success', `✅ Данные отправлены в Telegram`);
+        console.log(`   Данные:`, data);
+        console.log(`   Полный payload: ${payload}`);
 
-                // Показываем индикатор отправки
-                showToast(`📤 Отправка: ${action}`);
-
-            } catch (e) {
-                logToConsole('error', `❌ Ошибка отправки: ${e.message}`);
-                showToast(`❌ Ошибка отправки`, true);
-            }
+        try {
+        // ⚠️ ВАЖНО: Telegram WebApp отправляет данные как обычное сообщение
+          tg.sendData(payload);
+          logToConsole('success', `✅ Данные отправлены в Telegram`);
+        } catch (e) {
+            logToConsole('error', `❌ Ошибка отправки: ${e.message}`);
+            showToast(`❌ Ошибка отправки`, true);
         }
+    }
+
 
         // ========== ПОЛУЧЕНИЕ ДАННЫХ ОТ БОТА ==========
         tg.onEvent('webAppData', (event) => {

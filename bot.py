@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import json
+import aiosqlite
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery
 from aiogram.filters import CommandStart
@@ -17,8 +18,8 @@ db = Database()
 
 dp.include_router(admin_router)
 
-# ⚠️ ПРОВЕРЬ ЧТО ЭТА ССЫЛКА ТОЧНАЯ!
 WEBAPP_URL = "https://p4ostopen-jpg.github.io/MiniApp/"
+
 
 @dp.message(CommandStart())
 async def start(message: Message):
@@ -48,87 +49,103 @@ async def start(message: Message):
     )
 
 
-@dp.message(F.web_app_data)
+# ========== ВАЖНО! ЭТОТ ОБРАБОТЧИК ЛОВИТ ВСЕ СООБЩЕНИЯ ==========
+@dp.message()
 async def web_app_handler(message: Message):
-    print("\n" + "=" * 50)
-    print("🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ ОТ MINI APP!")
-    print(f"📦 Данные: {message.web_app_data.data}")
-    print("=" * 50 + "\n")
-    logger.info(f"🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ: {message.web_app_data.data}")
+    # ПРОВЕРЯЕМ: Это JSON от нашего Mini App?
+    if not message.text or not message.text.strip().startswith('{'):
+        return  # Игнорируем не-JSON сообщения
+
+    print("\n" + "🔥" * 50)
+    print("🔥 ПОЛУЧЕНО СООБЩЕНИЕ ОТ MINI APP!")
+    print(f"🔥 User ID: {message.from_user.id}")
+    print(f"🔥 Username: {message.from_user.username}")
+    print(f"🔥 Данные: {message.text}")
+    print("🔥" * 50 + "\n")
+
+    logger.info(f"🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ: {message.text}")
 
     try:
-        data = json.loads(message.web_app_data.data)
+        data = json.loads(message.text)
         action = data.get('action')
         user_id = message.from_user.id
 
-        logger.info(f"📥 Получен запрос: {action} от {user_id}")
+        logger.info(f"📥 Действие: {action}")
         logger.info(f"📦 Данные: {data}")
 
         if action == 'get_products':
+            # Получаем товары
             products = await db.get_products()
-            # ⚠️ ВАЖНО: Отправляем через web_app_data ответ
-            await bot.send_message(
-                user_id,
+            logger.info(f"📦 Найдено товаров: {len(products)}")
+
+            # Отправляем ответ
+            await message.answer(
                 json.dumps(products, ensure_ascii=False)
             )
+            logger.info(f"✅ Товары отправлены")
 
         elif action == 'get_cart':
             cart = await db.get_cart(user_id)
             total = sum(item['price'] * item['quantity'] for item in cart)
-            await bot.send_message(
-                user_id,
-                json.dumps({
-                    'items': [
-                        {'id': item['product_id'], 'name': item['name'],
-                         'price': item['price'], 'quantity': item['quantity']}
-                        for item in cart
-                    ],
-                    'total': total
-                }, ensure_ascii=False)
+            response = {
+                'items': [
+                    {
+                        'id': item['product_id'],
+                        'name': item['name'],
+                        'price': item['price'],
+                        'quantity': item['quantity']
+                    }
+                    for item in cart
+                ],
+                'total': total
+            }
+            await message.answer(
+                json.dumps(response, ensure_ascii=False)
             )
+            logger.info(f"✅ Корзина отправлена: {len(cart)} позиций")
 
         elif action == 'add_to_cart':
             product_id = data.get('product_id')
             quantity = data.get('quantity', 1)
             await db.add_to_cart(user_id, product_id, quantity)
-            await bot.send_message(
-                user_id,
+            await message.answer(
                 json.dumps({'success': True})
             )
+            logger.info(f"✅ Товар {product_id} добавлен")
 
         elif action == 'update_cart':
             product_id = data.get('product_id')
             change = data.get('change')
             await db.update_cart(user_id, product_id, change)
-            await bot.send_message(
-                user_id,
+            await message.answer(
                 json.dumps({'success': True})
             )
+            logger.info(f"✅ Корзина обновлена")
 
         elif action == 'create_order':
             location = data.get('location')
             if not location:
-                await bot.send_message(
-                    user_id,
+                await message.answer(
                     json.dumps({'error': 'Нет адреса'})
                 )
                 return
 
             order_id = await db.create_order(user_id, location)
             if order_id:
+                # Уведомление продавцу
                 await bot.send_message(
                     SELLER_ID,
                     f"🆕 Новый заказ #{order_id}\n"
-                    f"👤 {message.from_user.full_name}\n"
+                    f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
                     f"📍 {location}"
                 )
-                await bot.send_message(
-                    user_id,
+                # Ответ пользователю
+                await message.answer(
                     json.dumps({'order_id': order_id})
                 )
+                logger.info(f"✅ Заказ #{order_id} создан")
             else:
-                await bot.send_message(
-                    user_id,
+                await message.answer(
                     json.dumps({'error': 'Корзина пуста'})
                 )
 
@@ -152,17 +169,25 @@ async def web_app_handler(message: Message):
                         for item in items
                     ]
                 })
-            await bot.send_message(
-                user_id,
+            await message.answer(
                 json.dumps(detailed_orders, ensure_ascii=False)
             )
+            logger.info(f"✅ Заказы отправлены: {len(detailed_orders)}")
 
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ Ошибка JSON: {e}")
+        logger.error(f"❌ Текст: {message.text}")
+        await message.answer(
+            json.dumps({'error': 'Неверный формат JSON'})
+        )
     except Exception as e:
-        logger.error(f"Mini App error: {e}")
-        await bot.send_message(
-            message.from_user.id,
+        logger.error(f"❌ Ошибка: {e}")
+        import traceback
+        traceback.print_exc()
+        await message.answer(
             json.dumps({'error': str(e)})
         )
+
 
 @dp.callback_query(F.data == "my_orders")
 async def my_orders(callback: CallbackQuery):
@@ -170,6 +195,7 @@ async def my_orders(callback: CallbackQuery):
 
     if not orders:
         await callback.message.answer("📋 У вас пока нет заказов")
+        await callback.answer()
         return
 
     text = "📋 МОИ ЗАКАЗЫ:\n\n"
@@ -184,30 +210,53 @@ async def my_orders(callback: CallbackQuery):
     await callback.message.answer(text)
     await callback.answer()
 
+
 @dp.callback_query(F.data == "admin_panel")
 async def admin_shortcut(callback: CallbackQuery):
     if callback.from_user.id in ADMIN_IDS:
         await admin_panel(callback.message)
     else:
         await callback.answer("❌ Нет доступа", show_alert=True)
+    await callback.answer()
+
 
 async def main():
+    # Создаем таблицы
     await db.create_tables()
+
+    # Проверяем наличие товаров
     products = await db.get_products()
-    logger.info(f"🧁 ТОВАРЫ В БД: {products}")
+    logger.info(f"📦 Товаров в БД: {len(products)}")
 
-    try:
-        await db.add_product("Ванильное", 100, 50)
-        await db.add_product("Шоколадное", 120, 40)
-        await db.add_product("Клубничное", 110, 30)
-        await db.add_product("Фисташковое", 150, 25)
-        await db.add_product("Карамельное", 130, 35)
-        logger.info("✅ Тестовые товары добавлены")
-    except Exception as e:
-        logger.info(f"📦 Товары уже существуют")
+    # Если товаров нет - добавляем тестовые
+    if len(products) == 0:
+        logger.info("🆕 Добавляем тестовые товары...")
+        test_products = [
+            ("Ванильное", 100, 50),
+            ("Шоколадное", 120, 40),
+            ("Клубничное", 110, 30),
+            ("Фисташковое", 150, 25),
+            ("Карамельное", 130, 35)
+        ]
 
-    logger.info("🤖 Бот запущен!")
+        for name, price, qty in test_products:
+            try:
+                await db.add_product(name, price, qty)
+                logger.info(f"✅ Добавлен: {name}")
+            except Exception as e:
+                logger.error(f"❌ Ошибка добавления {name}: {e}")
+
+    # ФИНАЛЬНАЯ ПРОВЕРКА
+    products = await db.get_products()
+    logger.info("=" * 50)
+    logger.info("🔥 БОТ ГОТОВ К РАБОТЕ!")
+    logger.info(f"📦 Всего товаров: {len(products)}")
+    for p in products:
+        logger.info(f"   - {p['name']}: {p['price']}₽, {p['quantity']}шт")
+    logger.info("=" * 50)
+
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
