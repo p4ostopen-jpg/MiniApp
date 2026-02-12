@@ -7,6 +7,7 @@ from aiogram.filters import CommandStart
 from config import BOT_TOKEN, SELLER_ID, ADMIN_IDS
 from database import Database
 from admin import router as admin_router, admin_panel
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,25 +29,24 @@ async def start(message: Message):
         message.from_user.first_name
     )
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text="🍦 Открыть магазин",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )],
-        [InlineKeyboardButton(text="📋 Мои заказы", callback_data="my_orders")]
-    ])
-
-    if message.from_user.id in ADMIN_IDS:
-        keyboard.inline_keyboard.append(
-            [InlineKeyboardButton(text="👨‍💼 Админ-панель", callback_data="admin_panel")]
-        )
+    # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(
+                text="🍦 Открыть магазин",
+                web_app=WebAppInfo(url=WEBAPP_URL)
+            )]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True   # клавиатура исчезнет после нажатия
+    )
+    # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
 
     await message.answer(
         f"👋 Привет, {message.from_user.first_name}!\n"
-        f"🛍 Нажми кнопку чтобы открыть магазин:",
+        f"Нажми кнопку ниже, чтобы открыть магазин:",
         reply_markup=keyboard
     )
-
 
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
