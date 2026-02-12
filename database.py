@@ -79,12 +79,20 @@ class Database:
             result = []
             for p in products:
                 p = dict(p)
-                # ⚠️ УБИРАЕМ /images/ - фото в корне!
-                p['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{p['name'].lower()}.jpg"
+                # ⚠️ ПЕРЕВОДИМ РУССКИЕ НАЗВАНИЯ В АНГЛИЙСКИЕ ФАЙЛЫ
+                name_map = {
+                    'Ванильное': 'vanilla',
+                    'Шоколадное': 'chocolate',
+                    'Клубничное': 'strawberry',
+                    'Фисташковое': 'pistachio',
+                    'Карамельное': 'caramel'
+                }
+                eng_name = name_map.get(p['name'], 'ice-cream')
+                p['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.jpg"
                 p['stock'] = p['quantity']
                 result.append(p)
             return result
-
+        
     async def get_cart(self, user_id):
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
