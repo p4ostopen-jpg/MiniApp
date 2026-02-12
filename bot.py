@@ -157,6 +157,8 @@ async def admin_shortcut(callback: CallbackQuery):
 
 async def main():
     await db.create_tables()
+    products = await db.get_products()
+    logger.info(f"🧁 ТОВАРЫ В БД: {products}")
 
     try:
         await db.add_product("Ванильное", 100, 50)
