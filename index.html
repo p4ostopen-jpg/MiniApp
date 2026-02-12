@@ -2,185 +2,58 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍦 ТЕСТ</title>
+    <title>Тест</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
-        }
-        h1 {
-            color: #1a2639;
-            font-size: 32px;
-            margin-bottom: 40px;
-        }
-        .test-btn {
-            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 20px 40px;
-            font-size: 24px;
-            font-weight: bold;
-            margin: 20px 0;
-            cursor: pointer;
-            width: 100%;
-            transition: transform 0.2s;
-            box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3);
-        }
-        .test-btn:hover {
-            transform: scale(0.98);
-        }
-        .test-btn.small {
-            font-size: 18px;
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #51c585 0%, #3aa36a 100%);
-        }
-        .status {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            margin-top: 30px;
-            font-size: 16px;
-            color: #333;
-            border: 1px solid #ddd;
-        }
-        .log {
-            background: #1e1e1e;
-            color: #0f0;
-            padding: 15px;
-            border-radius: 10px;
-            font-family: monospace;
-            text-align: left;
-            margin-top: 20px;
-            height: 200px;
-            overflow-y: auto;
-            font-size: 12px;
-        }
-    </style>
 </head>
-<body>
-    <div class="container">
-        <h1>🍦 ТЕСТОВЫЙ МАГАЗИН</h1>
+<body style="font-family: sans-serif; padding: 20px; text-align: center;">
+    <h1>🍦 ТЕСТ</h1>
 
-        <!-- ОГРОМНАЯ КНОПКА -->
-        <button class="test-btn" onclick="sendTest()">
-            🔥 НАЖМИ МЕНЯ 🔥
-        </button>
+    <button onclick="sendMessage()" style="
+        background: #4a6fa5;
+        color: white;
+        border: none;
+        padding: 20px 40px;
+        font-size: 24px;
+        border-radius: 20px;
+        margin: 20px;
+        cursor: pointer;
+    ">
+        🔥 ОТПРАВИТЬ
+    </button>
 
-        <!-- КНОПКА ПОМЕНЬШЕ -->
-        <button class="test-btn small" onclick="sendProducts()">
-            📦 ЗАПРОСИТЬ ТОВАРЫ
-        </button>
-
-        <!-- СТАТУС -->
-        <div class="status">
-            <div id="status">✅ Готов к отправке</div>
-            <div id="userInfo"></div>
-        </div>
-
-        <!-- ЛОГИ -->
-        <div class="log" id="log">
-            📋 Логи WebApp:
-        </div>
+    <div id="status" style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 10px;">
+        Статус: готов
     </div>
 
     <script>
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        const logDiv = document.getElementById('log');
-        const statusDiv = document.getElementById('status');
-        const userDiv = document.getElementById('userInfo');
+        function sendMessage() {
+            const status = document.getElementById('status');
+            status.innerHTML = '📤 Отправка...';
+            status.style.background = '#fff3cd';
 
-        // Показываем информацию о пользователе
-        if (tg.initDataUnsafe?.user) {
-            const user = tg.initDataUnsafe.user;
-            userDiv.innerHTML = `
-                👤 ID: ${user.id}<br>
-                📝 Имя: ${user.first_name}<br>
-                🔗 Бот: @kurevo1bot
-            `;
-        }
+            console.log('📤 Отправляем:', 'test');
 
-        // ========== ФУНКЦИЯ ЛОГГИРОВАНИЯ ==========
-        function addLog(text) {
-            const time = new Date().toLocaleTimeString();
-            logDiv.innerHTML += `<br>[${time}] ${text}`;
-            logDiv.scrollTop = logDiv.scrollHeight;
-            console.log(text);
-        }
-
-        // ========== ОТПРАВКА ДАННЫХ ==========
-        function sendToBot(data) {
-            const payload = JSON.stringify(data);
-
-            addLog(`📤 ОТПРАВКА: ${payload}`);
-            addLog(`🤖 Бот: @kurevo1bot`);
-
-            statusDiv.innerHTML = `📤 Отправка...`;
-            statusDiv.style.color = 'orange';
-
-            try {
-                tg.sendData(payload);
-                addLog(`✅ Отправлено успешно!`);
-                statusDiv.innerHTML = `✅ Отправлено!`;
-                statusDiv.style.color = 'green';
-            } catch (e) {
-                addLog(`❌ ОШИБКА: ${e.message}`);
-                statusDiv.innerHTML = `❌ Ошибка: ${e.message}`;
-                statusDiv.style.color = 'red';
-            }
-        }
-
-        // ========== КНОПКА 1 ==========
-        function sendTest() {
-            addLog(`🔥 НАЖАТА ТЕСТОВАЯ КНОПКА`);
-            sendToBot({
+            tg.sendData(JSON.stringify({
                 action: 'test',
-                message: 'Привет от WebApp!',
-                timestamp: new Date().toISOString()
-            });
+                message: 'Привет от WebApp!'
+            }));
+
+            status.innerHTML = '✅ Отправлено!';
+            status.style.background = '#d4edda';
         }
 
-        // ========== КНОПКА 2 ==========
-        function sendProducts() {
-            addLog(`📦 ЗАПРОС ТОВАРОВ`);
-            sendToBot({
-                action: 'get_products'
-            });
-        }
-
-        // ========== ОБРАБОТКА ОТВЕТА ==========
-        tg.onEvent('webAppData', (event) => {
-            addLog(`📥 ОТВЕТ ОТ БОТА: ${event.data}`);
-            try {
-                const data = JSON.parse(event.data);
-                addLog(`✅ Распарсено: ${JSON.stringify(data)}`);
-                statusDiv.innerHTML = `✅ Получен ответ!`;
-            } catch (e) {
-                addLog(`❌ Ошибка парсинга: ${e.message}`);
-            }
+        // Получение ответа
+        tg.onEvent('webAppData', function(event) {
+            console.log('📥 Получен ответ:', event.data);
+            document.getElementById('status').innerHTML = '📥 Ответ: ' + event.data;
         });
 
-        addLog(`🚀 WebApp загружен`);
-        addLog(`🤖 Бот: @kurevo1bot`);
-        addLog(`🔗 initData: ${tg.initData ? '✅ Есть' : '❌ Нет'}`);
+        console.log('WebApp загружен');
+        document.getElementById('status').innerHTML = '✅ WebApp готов';
     </script>
 </body>
 </html>
