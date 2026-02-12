@@ -205,3 +205,11 @@ class Database:
                 VALUES (?, ?, ?)
             ''', (name, price, quantity))
             await db.commit()
+
+    async def delete_product(self, product_id):
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                'UPDATE products SET is_available = 0 WHERE id = ?',
+                (product_id,)
+            )
+            await db.commit()

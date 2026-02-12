@@ -55,6 +55,7 @@ async def web_app_handler(message: Message):
         user_id = message.from_user.id
 
         logger.info(f"📥 Получен запрос: {action} от {user_id}")
+        logger.info(f"📦 Данные: {data}")
 
         if action == 'get_products':
             products = await db.get_products()

@@ -10,11 +10,16 @@ db = Database()
 
 
 def admin_required(func):
-    async def wrapper(message, *args, **kwargs):
-        if message.from_user.id not in ADMIN_IDS:
-            await message.answer("❌ Нет доступа")
+    async def wrapper(event, *args, **kwargs):
+        user_id = event.from_user.id
+        if user_id not in ADMIN_IDS:
+            if isinstance(event, Message):
+                await event.answer("❌ Нет доступа")
+            elif isinstance(event, CallbackQuery):
+                await event.answer("❌ Нет доступа", show_alert=True)
             return
-        return await func(message, *args, **kwargs)
+        # Убираем **kwargs из вызова функции!
+        return await func(event, *args)
 
     return wrapper
 
@@ -58,8 +63,54 @@ async def admin_add_product(message: Message):
         name, price, qty = message.text.split("|")
         await db.add_product(name.strip(), int(price), int(qty))
         await message.answer(f"✅ Товар '{name.strip()}' добавлен!")
-    except:
-        await message.answer("❌ Ошибка формата! Используйте: Название|Цена|Количество")
+    except Exception as e:
+        await message.answer(f"❌ Ошибка: {e}\nИспользуйте формат: Название|Цена|Количество")
+
+
+@router.callback_query(F.data == "admin_update")
+@admin_required
+async def admin_update_start(callback: CallbackQuery):
+    products = await db.get_products()
+    if not products:
+        await callback.message.edit_text("❌ Нет товаров")
+        return
+
+    text = "📦 Выберите товар для обновления:\n\n"
+    for p in products:
+        text += f"🆔 {p['id']}: {p['name']} - {p['quantity']} шт.\n"
+    text += "\nОтправьте: ID|Новое_количество"
+
+    await callback.message.edit_text(text)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_delete")
+@admin_required
+async def admin_delete_start(callback: CallbackQuery):
+    products = await db.get_products()
+    if not products:
+        await callback.message.edit_text("❌ Нет товаров")
+        return
+
+    builder = InlineKeyboardBuilder()
+    for p in products:
+        builder.button(text=f"{p['name']}", callback_data=f"del_{p['id']}")
+    builder.adjust(2)
+
+    await callback.message.edit_text(
+        "❌ Выберите товар для удаления:",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("del_"))
+@admin_required
+async def admin_delete_confirm(callback: CallbackQuery):
+    product_id = int(callback.data.split("_")[1])
+    await db.delete_product(product_id)
+    await callback.message.edit_text("✅ Товар удален")
+    await callback.answer()
 
 
 @router.callback_query(F.data == "admin_orders")
@@ -76,6 +127,7 @@ async def admin_orders(callback: CallbackQuery):
         text += f"🆔 #{order['id']}\n"
         text += f"👤 {order['user_id']}\n"
         text += f"💰 {order['total']}₽\n"
+        text += f"📍 {order['location']}\n"
         text += f"📅 {order['created_at'][:16]}\n"
         text += "─" * 15 + "\n"
 
