@@ -29,10 +29,6 @@
         .location-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 15px; }
         .checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #51c585 0%, #3aa36a 100%); color: white; border: none; border-radius: 16px; font-size: 18px; font-weight: 600; cursor: pointer; }
         .order-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; }
-        .order-status { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-        .status-pending { background: #fff4e0; color: #c47a2d; }
-        .status-confirmed { background: #e1f7e1; color: #2d7a4b; }
-        .status-cancelled { background: #ffe0e0; color: #c44a4a; }
         .cart-fab { position: fixed; bottom: 24px; right: 24px; width: 64px; height: 64px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); border-radius: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3); cursor: pointer; }
         .cart-count { position: absolute; top: -6px; right: -6px; background: #ff6b6b; color: white; border-radius: 20px; padding: 4px 10px; font-size: 12px; }
         .empty-state { text-align: center; padding: 48px 20px; color: #6b7b8c; }
@@ -51,7 +47,7 @@
         <div id="mainPage">
             <div class="header">
                 <h1>🍦 Магазин мороженого</h1>
-                <p>Свежее и вкусное мороженое каждый день</p>
+                <p id="loadingStatus">Загрузка товаров...</p>
             </div>
             <div id="products" class="products-grid"></div>
         </div>
@@ -88,54 +84,92 @@
         tg.ready();
         tg.expand();
 
-        // ========== ДАННЫЕ ==========
+        // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
         let products = [];
         let cart = [];
+        let messageHandler = null;
 
-        // ========== ЗАГРУЗКА ТОВАРОВ ИЗ БД ==========
-        async function loadProductsFromBot() {
-            try {
-                // Запрашиваем товары у бота
-                tg.sendData(JSON.stringify({action: 'get_products'}));
+        // ========== ОТПРАВКА В БОТ И ПОЛУЧЕНИЕ ОТВЕТА ==========
+        function sendToBot(action, data = {}) {
+            return new Promise((resolve, reject) => {
+                // Создаём уникальный ID для этого запроса
+                const requestId = Date.now() + Math.random().toString(36);
+                const requestData = {action, ...data, requestId};
 
-                // Слушаем ответ от бота
-                window.addEventListener('message', function(event) {
+                // Удаляем предыдущий обработчик
+                if (messageHandler) {
+                    window.removeEventListener('message', messageHandler);
+                }
+
+                // Устанавливаем новый обработчик
+                messageHandler = function(event) {
                     try {
-                        const data = JSON.parse(event.data);
-                        if (Array.isArray(data)) {
-                            products = data;
-                            renderProducts();
-                            showToast(`✅ Загружено ${products.length} товаров`);
+                        const response = JSON.parse(event.data);
+                        // Проверяем, что это ответ на наш запрос
+                        if (response.requestId === requestId) {
+                            resolve(response);
                         }
                     } catch (e) {
-                        console.error('Ошибка парсинга товаров:', e);
+                        // Игнорируем не-JSON сообщения
                     }
-                });
+                };
+
+                window.addEventListener('message', messageHandler);
+
+                // Отправляем запрос
+                tg.sendData(JSON.stringify(requestData));
+
+                // Таймаут на случай, если бот не ответит
+                setTimeout(() => {
+                    window.removeEventListener('message', messageHandler);
+                    reject(new Error('Timeout'));
+                }, 5000);
+            });
+        }
+
+        // ========== ЗАГРУЗКА ТОВАРОВ ==========
+        async function loadProducts() {
+            try {
+                document.getElementById('loadingStatus').innerText = 'Загрузка товаров...';
+
+                const response = await sendToBot('get_products');
+
+                if (Array.isArray(response)) {
+                    products = response;
+                    renderProducts();
+                    document.getElementById('loadingStatus').innerHTML = `✅ Загружено ${products.length} товаров`;
+                    showToast(`✅ Загружено ${products.length} товаров`);
+                } else {
+                    throw new Error('Неверный формат ответа');
+                }
             } catch (e) {
                 console.error('Ошибка загрузки товаров:', e);
+                document.getElementById('loadingStatus').innerHTML = '❌ Ошибка загрузки. Попробуйте позже.';
+                showToast('❌ Ошибка загрузки товаров', true);
+
+                // Пробуем снова через 2 секунды
+                setTimeout(loadProducts, 2000);
             }
         }
 
-        // ========== ОТПРАВКА В БОТ ==========
-        function sendToBot(action, data = {}) {
-            tg.sendData(JSON.stringify({action, ...data}));
-        }
-
-        // ========== ТОВАРЫ ==========
+        // ========== ОТОБРАЖЕНИЕ ТОВАРОВ ==========
         function renderProducts() {
             const container = document.getElementById('products');
-            if (!products.length) {
-                container.innerHTML = '<div class="empty-state">🍦 Загрузка товаров...</div>';
+
+            if (!products || products.length === 0) {
+                container.innerHTML = '<div class="empty-state">🍦 Нет доступных товаров</div>';
                 return;
             }
 
             container.innerHTML = products.map(p => `
                 <div class="product-card">
-                    <img src="${p.image_url}" alt="${p.name}" class="product-image"
-                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><rect width=%22300%22 height=%22200%22 fill=%22%23f8fafc%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%2248%22 text-anchor=%22middle%22 dy=%22.3em%22>🍦</text></svg>'">
+                    <img src="${p.image_url || 'https://via.placeholder.com/300x200?text=🍦'}"
+                         alt="${p.name}"
+                         class="product-image"
+                         onerror="this.src='https://via.placeholder.com/300x200?text=🍦'">
                     <div class="product-name">${p.name}</div>
                     <div class="product-price">${p.price} ₽</div>
-                    <div class="product-stock">В наличии: ${p.stock} шт.</div>
+                    <div class="product-stock">В наличии: ${p.stock || p.quantity} шт.</div>
                     <div class="quantity-control">
                         <button class="qty-btn" onclick="decreaseQty(${p.id})">−</button>
                         <span id="qty_${p.id}" class="quantity">1</span>
@@ -150,7 +184,9 @@
             const el = document.getElementById(`qty_${id}`);
             let qty = parseInt(el.innerText);
             const prod = products.find(p => p.id === id);
-            if (qty < prod.stock) el.innerText = qty + 1;
+            if (qty < (prod.stock || prod.quantity)) {
+                el.innerText = qty + 1;
+            }
         }
 
         function decreaseQty(id) {
@@ -168,7 +204,12 @@
             if (existing) {
                 existing.quantity += qty;
             } else {
-                cart.push({...product, quantity: qty});
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: qty
+                });
             }
 
             renderCart();
@@ -193,11 +234,11 @@
                             <h4>${item.name}</h4>
                             <div>${item.price} ₽ × ${item.quantity}</div>
                         </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button onclick="updateCart(${item.id}, -1)">−</button>
-                            <span>${item.quantity}</span>
-                            <button onclick="updateCart(${item.id}, 1)">+</button>
-                            <button onclick="updateCart(${item.id}, -1000)">🗑️</button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button onclick="updateCart(${item.id}, -1)" style="width: 32px; height: 32px; border-radius: 8px; border: none; background: #f0f0f0; cursor: pointer;">−</button>
+                            <span style="font-weight: 600;">${item.quantity}</span>
+                            <button onclick="updateCart(${item.id}, 1)" style="width: 32px; height: 32px; border-radius: 8px; border: none; background: #f0f0f0; cursor: pointer;">+</button>
+                            <button onclick="updateCart(${item.id}, -1000)" style="border: none; background: none; font-size: 20px; cursor: pointer;">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -225,7 +266,7 @@
         }
 
         // ========== ОФОРМЛЕНИЕ ЗАКАЗА ==========
-        function checkout() {
+        async function checkout() {
             const location = document.getElementById('location').value.trim();
             if (!location) {
                 showToast('📍 Укажите адрес доставки!', true);
@@ -237,21 +278,32 @@
                 return;
             }
 
-            // Отправляем заказ в бот
-            sendToBot('create_order', {
-                location: location,
-                items: cart.map(i => ({id: i.id, quantity: i.quantity}))
-            });
+            try {
+                showToast('⏳ Отправка заказа...');
 
-            showToast('✅ Заказ отправлен!');
+                const response = await sendToBot('create_order', {
+                    location: location,
+                    items: cart.map(i => ({id: i.id, quantity: i.quantity}))
+                });
 
-            // Очищаем корзину
-            cart = [];
-            renderCart();
-            updateCartCount();
+                if (response.success) {
+                    showToast('✅ Заказ успешно оформлен!');
 
-            // Переходим на страницу заказов
-            setTimeout(() => showPage('orders'), 1000);
+                    // Очищаем корзину
+                    cart = [];
+                    renderCart();
+                    updateCartCount();
+                    document.getElementById('location').value = '';
+
+                    // Переходим на страницу заказов
+                    setTimeout(() => showPage('orders'), 1500);
+                } else {
+                    showToast('❌ ' + (response.error || 'Ошибка оформления заказа'), true);
+                }
+            } catch (e) {
+                console.error('Ошибка при оформлении заказа:', e);
+                showToast('❌ Ошибка отправки заказа', true);
+            }
         }
 
         function getLocation() {
@@ -268,20 +320,11 @@
         // ========== ЗАКАЗЫ ==========
         async function loadOrders() {
             try {
-                // Запрашиваем заказы у бота
-                tg.sendData(JSON.stringify({action: 'get_orders'}));
-
-                // Слушаем ответ
-                window.addEventListener('message', function(event) {
-                    try {
-                        const orders = JSON.parse(event.data);
-                        renderOrders(orders);
-                    } catch (e) {
-                        console.error('Ошибка парсинга заказов:', e);
-                    }
-                });
+                const orders = await sendToBot('get_orders');
+                renderOrders(orders);
             } catch (e) {
                 console.error('Ошибка загрузки заказов:', e);
+                document.getElementById('orders').innerHTML = '<div class="empty-state">❌ Ошибка загрузки заказов</div>';
             }
         }
 
@@ -294,41 +337,46 @@
             }
 
             container.innerHTML = orders.map(order => {
-                let statusClass = '';
                 let statusText = '';
+                let statusColor = '';
 
                 switch(order.status) {
                     case 'pending':
-                        statusClass = 'status-pending';
                         statusText = '⏳ Ожидает подтверждения';
+                        statusColor = '#c47a2d';
                         break;
                     case 'confirmed':
-                        statusClass = 'status-confirmed';
                         statusText = '✅ Подтверждён';
+                        statusColor = '#2d7a4b';
                         break;
                     case 'cancelled':
-                        statusClass = 'status-cancelled';
                         statusText = '❌ Отменён';
+                        statusColor = '#c44a4a';
                         break;
                     default:
-                        statusClass = 'status-pending';
                         statusText = '⏳ В обработке';
+                        statusColor = '#6b7b8c';
                 }
 
                 return `
                     <div class="order-card">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                            <span class="order-id">Заказ #${order.id}</span>
-                            <span class="order-status ${statusClass}">${statusText}</span>
+                            <span style="font-weight: 700; color: #4a6fa5;">Заказ #${order.id}</span>
+                            <span style="padding: 6px 14px; border-radius: 20px; background: ${statusColor}20; color: ${statusColor}; font-size: 12px; font-weight: 600;">
+                                ${statusText}
+                            </span>
                         </div>
-                        <div style="margin-bottom: 12px;">
-                            ${order.items.map(item => `
-                                <div>• ${item.product_name} x${item.quantity} - ${item.price * item.quantity}₽</div>
-                            `).join('')}
+                        <div style="margin-bottom: 12px; background: #f8fafc; padding: 12px; border-radius: 12px;">
+                            ${order.items ? order.items.map(item => `
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span>• ${item.product_name || item.name} x${item.quantity}</span>
+                                    <span style="font-weight: 600;">${item.price * item.quantity}₽</span>
+                                </div>
+                            `).join('') : ''}
                         </div>
                         <div style="display: flex; justify-content: space-between; color: #666;">
                             <span>📍 ${order.location}</span>
-                            <span>💰 ${order.total}₽</span>
+                            <span style="font-weight: 700; color: #4a6fa5;">💰 ${order.total}₽</span>
                         </div>
                         <div style="color: #999; font-size: 12px; margin-top: 12px;">
                             📅 ${new Date(order.created_at).toLocaleString('ru')}
@@ -349,7 +397,7 @@
             if (page === 'main') {
                 document.getElementById('mainPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[0].classList.add('active');
-                loadProductsFromBot();
+                loadProducts();
             } else if (page === 'cart') {
                 document.getElementById('cartPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[1].classList.add('active');
