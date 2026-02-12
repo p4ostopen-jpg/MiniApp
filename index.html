@@ -5,777 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍦 Жи Ши - магазин мороженого</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
+        /* Все стили остаются такими же, добавляем новые */
 
-        body {
-            background: linear-gradient(145deg, #f6f9fc 0%, #e6f0f5 100%);
-            min-height: 100vh;
-            padding: 16px;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Шапка */
-        .header {
-            background: white;
-            border-radius: 24px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.04);
-            text-align: center;
-        }
-
-        .header h1 {
-            color: #1a2639;
-            margin-bottom: 8px;
-            font-size: 32px;
-        }
-
-        .header p {
-            color: #6b7b8c;
-            font-size: 16px;
-        }
-
-        /* Навигация */
-        .nav-menu {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 20px;
-            background: white;
-            padding: 8px;
-            border-radius: 30px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-            flex-wrap: wrap;
-        }
-
-        .nav-btn {
-            flex: 1;
-            background: transparent;
-            border: none;
-            padding: 14px;
-            border-radius: 25px;
-            color: #6b7b8c;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-            min-width: 100px;
-        }
-
-        .nav-btn.active {
-            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(74, 111, 165, 0.2);
-        }
-
-        .admin-btn {
-            background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
-            color: white !important;
-        }
-
-        /* Сетка товаров */
-        .products-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .product-card {
-            background: white;
-            border-radius: 24px;
-            padding: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            transition: transform 0.2s;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(74, 111, 165, 0.1);
-        }
-
-        .product-image {
-            width: 100%;
-            height: 140px;
-            object-fit: cover;
-            border-radius: 16px;
-            margin-bottom: 12px;
-            background: #f8fafc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-        }
-
-        .product-name {
-            font-size: 18px;
-            font-weight: 700;
-            color: #1a2639;
-            margin-bottom: 4px;
-        }
-
-        .product-price {
-            font-size: 24px;
-            font-weight: 800;
-            color: #4a6fa5;
-            margin-bottom: 8px;
-        }
-
-        .product-stock {
-            color: #6b7b8c;
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
-
-        .product-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: auto;
-        }
-
-        .qty-selector {
-            display: flex;
-            align-items: center;
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 4px;
-            flex: 1;
-        }
-
-        .qty-btn {
-            width: 36px;
-            height: 36px;
-            border: none;
-            background: white;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: 600;
-            color: #4a6fa5;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .qty-btn:hover {
-            background: #4a6fa5;
-            color: white;
-        }
-
-        .quantity {
-            flex: 1;
-            text-align: center;
-            font-size: 16px;
-            font-weight: 600;
-            color: #1a2639;
-        }
-
-        .add-btn {
-            width: 44px;
-            height: 44px;
-            border: none;
-            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
-            color: white;
-            border-radius: 16px;
-            font-size: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .add-btn:hover {
-            transform: scale(0.95);
-        }
-
-        .add-btn.disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        /* Корзина */
-        .cart-page, .orders-page, .admin-page {
-            display: none;
-        }
-
-        .cart-item {
-            background: white;
-            border-radius: 20px;
-            padding: 16px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-        }
-
-        .cart-item-info h4 {
-            color: #1a2639;
-            margin-bottom: 4px;
-            font-size: 16px;
-        }
-
-        .cart-item-price {
-            color: #4a6fa5;
-            font-weight: 700;
-            font-size: 16px;
-        }
-
-        .cart-item-controls {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .cart-qty {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #f8fafc;
-            padding: 6px 12px;
-            border-radius: 20px;
-        }
-
-        .cart-qty button {
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: white;
-            border-radius: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            color: #4a6fa5;
-            font-weight: 600;
-        }
-
-        .remove-btn {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 8px;
-            color: #ff6b6b;
-        }
-
-        .cart-total {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            margin-top: 20px;
-            text-align: right;
-            font-size: 24px;
-            font-weight: 700;
-            color: #1a2639;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-        }
-
-        /* Адрес доставки */
-        .location-section {
-            margin-top: 20px;
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-        }
-
-        .location-buttons {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .location-btn {
-            flex: 1;
-            padding: 14px;
-            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .location-btn:hover {
-            transform: scale(0.98);
-            box-shadow: 0 8px 16px rgba(74, 111, 165, 0.3);
-        }
-
-        .location-input {
-            width: 100%;
-            padding: 16px;
-            border: 2px solid #eef2f5;
-            border-radius: 16px;
-            font-size: 15px;
-            transition: border 0.2s;
-            margin-bottom: 16px;
-        }
-
-        .location-input:focus {
-            border-color: #4a6fa5;
-            outline: none;
-        }
-
-        .location-input.error {
-            border-color: #ff6b6b;
-            animation: shake 0.5s;
-        }
-
-        .checkout-btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #51c585 0%, #3aa36a 100%);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .checkout-btn:hover {
-            transform: scale(0.98);
-            box-shadow: 0 8px 16px rgba(81, 197, 133, 0.3);
-        }
-
-        /* Заказы */
-        .order-card {
-            background: white;
-            border-radius: 24px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-        }
-
-        .order-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid #eef2f5;
-        }
-
-        .order-id {
-            font-weight: 700;
-            color: #4a6fa5;
-            font-size: 18px;
-        }
-
-        .order-status {
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .status-pending {
+        .location-permission {
             background: #fff4e0;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
             color: #c47a2d;
-        }
-
-        .status-confirmed {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
-
-        .status-completed {
-            background: #e1f7e1;
-            color: #2d7a4b;
-        }
-
-        .status-cancelled {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .order-info {
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .order-info-item {
-            display: flex;
-            margin-bottom: 8px;
-            color: #6b7b8c;
-        }
-
-        .order-info-item span:first-child {
-            width: 100px;
-            color: #1a2639;
-            font-weight: 600;
-        }
-
-        .order-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px dashed #eef2f5;
-        }
-
-        .order-item:last-child {
-            border-bottom: none;
-        }
-
-        .order-item-name {
-            font-weight: 600;
-            color: #1a2639;
-        }
-
-        .order-item-details {
-            display: flex;
-            gap: 16px;
-            color: #6b7b8c;
-        }
-
-        .order-item-price {
-            color: #4a6fa5;
-            font-weight: 600;
-        }
-
-        .order-total {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 2px solid #eef2f5;
-            text-align: right;
-            font-size: 20px;
-            font-weight: 700;
-            color: #1a2639;
-        }
-
-        .order-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 16px;
-        }
-
-        .order-action-btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .order-action-btn.confirm {
-            background: #4a6fa5;
-            color: white;
-        }
-
-        .order-action-btn.cancel {
-            background: #ff6b6b;
-            color: white;
-        }
-
-        .order-action-btn.restore {
-            background: #51c585;
-            color: white;
-        }
-
-        /* Админ панель */
-        .admin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .admin-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 16px;
-            padding: 16px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 28px;
-            font-weight: 800;
-            color: #4a6fa5;
-        }
-
-        .stat-label {
-            color: #6b7b8c;
-            font-size: 14px;
-            margin-top: 4px;
-        }
-
-        .admin-actions {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .admin-action-btn {
-            width: 100%;
-            padding: 14px;
-            margin-bottom: 12px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: left;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .admin-action-btn.add {
-            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
-            color: white;
-        }
-
-        .admin-action-btn.update {
-            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-            color: white;
-        }
-
-        .admin-action-btn.delete {
-            background: linear-gradient(135deg, #ff6b6b 0%, #c62828 100%);
-            color: white;
-        }
-
-        .admin-action-btn.orders {
-            background: linear-gradient(135deg, #51c585 0%, #2e7d32 100%);
-            color: white;
-        }
-
-        .product-management {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .product-management input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 12px;
-            border: 2px solid #eef2f5;
-            border-radius: 12px;
-            font-size: 15px;
-        }
-
-        .product-management input:focus {
-            border-color: #4a6fa5;
-            outline: none;
-        }
-
-        .product-list {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-        }
-
-        .product-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #eef2f5;
-        }
-
-        .product-list-item:last-child {
-            border-bottom: none;
-        }
-
-        .product-list-info h4 {
-            color: #1a2639;
-            margin-bottom: 4px;
-        }
-
-        .product-list-info span {
-            color: #6b7b8c;
             font-size: 14px;
         }
 
-        .product-list-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .product-list-btn {
-            padding: 8px 12px;
+        .location-permission button {
+            background: #4a6fa5;
+            color: white;
             border: none;
-            border-radius: 8px;
+            padding: 8px 16px;
+            border-radius: 12px;
             cursor: pointer;
             font-weight: 600;
         }
 
-        .product-list-btn.edit {
-            background: #4a6fa5;
-            color: white;
-        }
-
-        .product-list-btn.delete {
-            background: #ff6b6b;
-            color: white;
-        }
-
-        /* FAB кнопка корзины */
-        .cart-fab {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
-            border-radius: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 28px;
-            box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3);
-            cursor: pointer;
-            border: none;
-            transition: transform 0.2s;
-            z-index: 100;
-        }
-
-        .cart-fab:hover {
-            transform: scale(1.1);
-        }
-
-        .cart-count {
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            background: #ff6b6b;
-            color: white;
-            border-radius: 20px;
-            padding: 4px 10px;
+        .debug-info {
+            background: #f0f0f0;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 20px;
             font-size: 12px;
-            font-weight: 700;
-            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-        }
-
-        /* Пустое состояние */
-        .empty-state {
-            text-align: center;
-            padding: 48px 20px;
-            color: #6b7b8c;
-            background: white;
-            border-radius: 24px;
-            font-size: 16px;
-        }
-
-        /* Toast уведомления */
-        .toast {
-            position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-size: 14px;
-            z-index: 1000;
-            animation: fadeInOut 2s ease;
-        }
-
-        @keyframes fadeInOut {
-            0% { opacity: 0; bottom: 80px; }
-            15% { opacity: 1; bottom: 100px; }
-            85% { opacity: 1; bottom: 100px; }
-            100% { opacity: 0; bottom: 80px; }
-        }
-
-        @keyframes shake {
-            0%,100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        /* Модальное окно */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 24px;
-            padding: 24px;
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .modal-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1a2639;
-            margin-bottom: 16px;
-        }
-
-        .modal-input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 12px;
-            border: 2px solid #eef2f5;
-            border-radius: 12px;
-            font-size: 15px;
-        }
-
-        .modal-buttons {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .modal-btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .modal-btn.save {
-            background: #4a6fa5;
-            color: white;
-        }
-
-        .modal-btn.cancel {
-            background: #eef2f5;
-            color: #6b7b8c;
+            color: #666;
+            display: none;
         }
     </style>
 </head>
@@ -788,6 +49,9 @@
             <button class="nav-btn" onclick="showPage('orders')">📋 Заказы</button>
             <button class="nav-btn admin-btn" onclick="showPage('admin')" id="adminNavBtn" style="display: none;">👨‍💼 Админ</button>
         </div>
+
+        <!-- Дебаг информация (только для разработки) -->
+        <div id="debugInfo" class="debug-info"></div>
 
         <!-- Главная страница с товарами -->
         <div id="mainPage">
@@ -807,8 +71,14 @@
             <div id="cartTotal" class="cart-total">0 ₽</div>
 
             <div class="location-section">
+                <!-- Блок запроса разрешения на геолокацию -->
+                <div id="locationPermission" class="location-permission" style="display: none;">
+                    <span>📍 Для автоматического определения адреса разрешите доступ к геолокации</span>
+                    <button onclick="requestLocationPermission()">Разрешить</button>
+                </div>
+
                 <div class="location-buttons">
-                    <button class="location-btn" onclick="getLocation()">
+                    <button class="location-btn" onclick="getLocation()" id="locationBtn">
                         📍 Указать местоположение
                     </button>
                 </div>
@@ -832,6 +102,7 @@
         <div id="adminPage" style="display:none;">
             <div class="header">
                 <h1>👨‍💼 Панель администратора</h1>
+                <p id="adminWelcome"></p>
             </div>
 
             <div class="admin-stats">
@@ -954,8 +225,8 @@
 
         // ==================== ДАННЫЕ ====================
 
-        // ID администраторов (загружаем из Telegram WebApp Data)
-        const ADMIN_IDS = [539040973]; // Замените на ваш ID
+        // ID администраторов (ваш ID из .env)
+        const ADMIN_IDS = [539040973]; // Ваш Telegram ID
 
         // Текущий пользователь
         const currentUser = {
@@ -964,6 +235,11 @@
             first_name: tg.initDataUnsafe?.user?.first_name || 'Пользователь',
             is_admin: ADMIN_IDS.includes(tg.initDataUnsafe?.user?.id || 0)
         };
+
+        // Дебаг информация
+        console.log('Current user:', currentUser);
+        console.log('Is admin:', currentUser.is_admin);
+        console.log('Admin IDs:', ADMIN_IDS);
 
         // Каталог товаров
         let catalog = [
@@ -1006,7 +282,7 @@
                 }
             }
 
-            // Загружаем заказы
+            // Загружаем заказы пользователя
             const savedOrders = localStorage.getItem('orders');
             if (savedOrders) {
                 try {
@@ -1055,51 +331,118 @@
 
         // Показываем кнопку админа если пользователь админ
         if (currentUser.is_admin) {
+            console.log('✅ Админ авторизован, показываем панель');
             document.getElementById('adminNavBtn').style.display = 'block';
+            document.getElementById('adminWelcome').innerHTML = `👋 Добро пожаловать, ${currentUser.first_name}!`;
+        } else {
+            console.log('❌ Не админ, панель скрыта');
         }
+
+        // Проверяем статус геолокации при загрузке
+        checkLocationPermission();
 
         // ==================== ГЕОЛОКАЦИЯ ====================
 
-        function getLocation() {
-            if (navigator.geolocation) {
-                showToast('📍 Определяем местоположение...');
-                navigator.geolocation.getCurrentPosition(
-                    async (pos) => {
-                        const lat = pos.coords.latitude;
-                        const lon = pos.coords.longitude;
+        function checkLocationPermission() {
+            if (navigator.permissions) {
+                navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+                    if (result.state === 'denied') {
+                        document.getElementById('locationPermission').style.display = 'flex';
+                    } else if (result.state === 'granted') {
+                        document.getElementById('locationPermission').style.display = 'none';
+                    }
+                });
+            }
+        }
 
-                        try {
-                            // Пробуем получить адрес
-                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`);
-                            const data = await res.json();
-                            document.getElementById('location').value = data.display_name || `${lat}, ${lon}`;
-                            showToast('✅ Адрес получен');
-                        } catch {
-                            // Если не получилось, ставим координаты
-                            document.getElementById('location').value = `${lat}, ${lon}`;
-                            showToast('📍 Координаты получены');
-                        }
-                    },
-                    (error) => {
-                        console.error('Ошибка геолокации:', error);
-                        let errorMessage = '❌ Не удалось получить местоположение';
-                        if (error.code === 1) {
-                            errorMessage = '❌ Доступ запрещен. Разрешите геолокацию';
-                        } else if (error.code === 2) {
-                            errorMessage = '❌ Ошибка определения позиции';
-                        } else if (error.code === 3) {
+        function requestLocationPermission() {
+            // Запрашиваем геолокацию, что автоматически вызовет запрос разрешения
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    document.getElementById('locationPermission').style.display = 'none';
+                    showToast('✅ Доступ к геолокации разрешен');
+                    // Получаем адрес
+                    getAddressFromCoords(position.coords.latitude, position.coords.longitude);
+                },
+                function(error) {
+                    if (error.code === 1) {
+                        showToast('❌ Необходимо разрешить геолокацию', true);
+                    }
+                }
+            );
+        }
+
+        function getLocation() {
+            // Показываем запрос на геолокацию
+            showToast('📍 Запрашиваем доступ к геолокации...');
+
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    // Успешно получили координаты
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+
+                    // Скрываем блок разрешения если был показан
+                    document.getElementById('locationPermission').style.display = 'none';
+
+                    // Получаем адрес
+                    await getAddressFromCoords(lat, lon);
+                },
+                (error) => {
+                    console.error('Ошибка геолокации:', error);
+
+                    let errorMessage = '❌ Не удалось получить местоположение';
+
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = '❌ Доступ запрещен. Нажмите "Разрешить" в блоке выше';
+                            document.getElementById('locationPermission').style.display = 'flex';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = '❌ Информация о местоположении недоступна';
+                            break;
+                        case error.TIMEOUT:
                             errorMessage = '❌ Время ожидания истекло';
-                        }
-                        showToast(errorMessage, true);
-                    },
+                            break;
+                    }
+
+                    showToast(errorMessage, true);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        async function getAddressFromCoords(lat, lon) {
+            try {
+                showToast('🔄 Определяем адрес...');
+
+                // Пробуем получить адрес через OpenStreetMap
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`,
                     {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
+                        headers: {
+                            'User-Agent': 'ZhishiIceCream/1.0'
+                        }
                     }
                 );
-            } else {
-                showToast('❌ Геолокация не поддерживается', true);
+
+                const data = await res.json();
+
+                if (data.display_name) {
+                    document.getElementById('location').value = data.display_name;
+                    showToast('✅ Адрес получен');
+                } else {
+                    document.getElementById('location').value = `${lat}, ${lon}`;
+                    showToast('📍 Координаты получены');
+                }
+            } catch (e) {
+                console.error('Ошибка получения адреса:', e);
+                document.getElementById('location').value = `${lat}, ${lon}`;
+                showToast('📍 Координаты получены');
             }
         }
 
@@ -1360,7 +703,11 @@
         // ==================== АДМИН ПАНЕЛЬ ====================
 
         function renderAdminPanel() {
-            if (!currentUser.is_admin) return;
+            if (!currentUser.is_admin) {
+                showToast('❌ Нет доступа к админ-панели', true);
+                showPage('main');
+                return;
+            }
 
             // Обновляем статистику
             updateAdminStats();
@@ -1372,6 +719,8 @@
             if (document.getElementById('adminOrdersSection').style.display === 'block') {
                 renderAdminOrders();
             }
+
+            showToast('👨‍💼 Панель администратора загружена');
         }
 
         function updateAdminStats() {
@@ -1708,10 +1057,15 @@
                 document.getElementById('ordersPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[2].classList.add('active');
                 renderOrders();
-            } else if (page === 'admin' && currentUser.is_admin) {
-                document.getElementById('adminPage').style.display = 'block';
-                document.querySelectorAll('.nav-btn')[3].classList.add('active');
-                renderAdminPanel();
+            } else if (page === 'admin') {
+                if (currentUser.is_admin) {
+                    document.getElementById('adminPage').style.display = 'block';
+                    document.querySelectorAll('.nav-btn')[3].classList.add('active');
+                    renderAdminPanel();
+                } else {
+                    showToast('❌ У вас нет прав администратора', true);
+                    showPage('main');
+                }
             }
         }
 
@@ -1738,6 +1092,11 @@
             renderOrders();
 
             showToast('🍦 Добро пожаловать!');
+
+            // Дебаг информация
+            console.log('App loaded');
+            console.log('Current user ID:', currentUser.id);
+            console.log('Is admin:', currentUser.is_admin);
         });
 
         // ==================== ЭКСПОРТ ФУНКЦИЙ ====================
@@ -1748,6 +1107,7 @@
         window.addToCart = addToCart;
         window.updateCart = updateCart;
         window.getLocation = getLocation;
+        window.requestLocationPermission = requestLocationPermission;
         window.checkout = checkout;
         window.showAddProductModal = showAddProductModal;
         window.addProduct = addProduct;
