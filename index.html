@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍦 Магазин Жи Ши отдуши</title>
+    <title>🍦 Магазин Жи Ши</title>
     <style>
+        /* Все стили остаются такими же как в предыдущей версии */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         body { background: linear-gradient(145deg, #f6f9fc 0%, #e6f0f5 100%); min-height: 100vh; padding: 16px; }
         .container { max-width: 600px; margin: 0 auto; }
@@ -204,28 +205,9 @@
             85% { opacity: 1; bottom: 100px; }
             100% { opacity: 0; bottom: 80px; }
         }
-        .debug-panel {
-            position: fixed;
-            bottom: 100px;
-            left: 16px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            max-width: 200px;
-            display: none;
-            z-index: 1001;
-        }
     </style>
 </head>
 <body>
-    <div class="debug-panel" id="debugPanel">
-        <div>🔄 Статус: <span id="debugStatus">Инициализация...</span></div>
-        <div>📦 Товаров: <span id="debugProducts">0</span></div>
-        <div>🛒 Корзина: <span id="debugCart">0</span></div>
-    </div>
-
     <div class="container">
         <div class="nav-menu">
             <button class="nav-btn active" onclick="showPage('main')">🍦 Меню</button>
@@ -236,7 +218,7 @@
         <div id="mainPage">
             <div class="header">
                 <h1>🍦 Жи Ши</h1>
-                <p>Свежее и вкусное Жи Ши каждый день</p>
+                <p>Свежее мороженое каждый день</p>
             </div>
             <div id="products" class="products-grid"></div>
         </div>
@@ -285,96 +267,91 @@
         let cart = [];
         let orders = [];
 
-        // ========== ОТЛАДКА ==========
-        function updateDebugInfo() {
-            document.getElementById('debugStatus').innerText = 'Активен';
-            document.getElementById('debugProducts').innerText = products.length;
-            document.getElementById('debugCart').innerText = cart.reduce((sum, i) => sum + i.quantity, 0);
+        // ========== ЗАГРУЗКА ДАННЫХ ПРИ СТАРТЕ ==========
+        async function initApp() {
+            showToast('🔄 Загрузка товаров...');
+
+            // Запрашиваем товары у бота
+            tg.sendData(JSON.stringify({action: 'get_products'}));
+
+            // Запрашиваем заказы
+            setTimeout(() => {
+                tg.sendData(JSON.stringify({action: 'get_orders'}));
+            }, 500);
         }
 
-        function logToConsole(type, message, data = null) {
-            const ts = new Date().toLocaleTimeString();
-            const msg = `[${ts}] ${message}`;
-            if (type === 'error') console.error(`❌ ${msg}`, data || '');
-            else if (type === 'success') console.log(`✅ ${msg}`, data || '');
-            else console.log(`📌 ${msg}`, data || '');
-        }
-
-        function showToast(text, isError = false) {
-            const toast = document.getElementById('toast');
-            toast.style.display = 'block';
-            toast.style.background = isError ? 'rgba(255,107,107,0.9)' : 'rgba(0,0,0,0.8)';
-            toast.textContent = text;
-            setTimeout(() => toast.style.display = 'none', 2000);
-        }
-
-        // ========== ОТПРАВКА В БОТ ==========
-        function sendToBot(action, data = {}) {
-            try {
-                tg.sendData(JSON.stringify({action, ...data}));
-                logToConsole('info', `📤 Отправлено действие: ${action}`, data);
-            } catch (e) {
-                console.error('Ошибка отправки:', e);
-                showToast('❌ Ошибка отправки', true);
-            }
-        }
-
-        // ========== ПОЛУЧЕНИЕ ОТВЕТОВ ОТ БОТА ==========
+        // ========== ОБРАБОТКА ОТВЕТОВ ОТ БОТА ==========
         tg.onEvent('message', (event) => {
             try {
-                const response = JSON.parse(event.data);
-                logToConsole('success', '📥 Получен ответ от бота', response);
+                const data = JSON.parse(event.data);
+                console.log('📦 Получены данные:', data);
 
-                switch (response.type) {
-                    case 'products':
-                        products = response.data;
-                        renderProducts();
-                        showToast(`✅ Загружено ${products.length} товаров`);
-                        break;
-
-                    case 'orders':
-                        orders = response.data;
+                if (data.type === 'products') {
+                    products = data.data;
+                    renderProducts();
+                    showToast(`✅ Загружено ${products.length} товаров`);
+                }
+                else if (data.type === 'orders') {
+                    orders = data.data;
+                    if (document.getElementById('ordersPage').style.display === 'block') {
                         renderOrders();
-                        break;
+                    }
+                }
+                else if (data.type === 'order_created') {
+                    // Добавляем новый заказ в список
+                    if (data.order) {
+                        orders = [data.order, ...orders];
+                        showToast(data.message || '✅ Заказ создан');
 
-                    case 'order_created':
-                        // Добавляем новый заказ в список
-                        if (response.order) {
-                            orders = [response.order, ...orders];
+                        // Если мы на странице заказов, обновляем их
+                        if (document.getElementById('ordersPage').style.display === 'block') {
                             renderOrders();
-                            showToast(response.message || '✅ Заказ создан');
                         }
-                        break;
-
-                    case 'error':
-                        showToast(`❌ ${response.message}`, true);
-                        break;
-
-                    default:
-                        console.log('Неизвестный тип ответа:', response);
+                    }
+                }
+                else if (data.type === 'error') {
+                    showToast(`❌ ${data.message}`, true);
                 }
             } catch (e) {
-                console.error('Ошибка обработки ответа:', e);
+                console.error('Ошибка обработки:', e);
             }
         });
 
-        // ========== ТОВАРЫ ==========
-        function loadProducts() {
-            sendToBot('get_products');
+        // ========== УПРАВЛЕНИЕ СТРАНИЦАМИ ==========
+        function showPage(page) {
+            document.getElementById('mainPage').style.display = 'none';
+            document.getElementById('cartPage').style.display = 'none';
+            document.getElementById('ordersPage').style.display = 'none';
+
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+            if (page === 'main') {
+                document.getElementById('mainPage').style.display = 'block';
+                document.querySelectorAll('.nav-btn')[0].classList.add('active');
+                renderProducts();
+            } else if (page === 'cart') {
+                document.getElementById('cartPage').style.display = 'block';
+                document.querySelectorAll('.nav-btn')[1].classList.add('active');
+                renderCart();
+            } else if (page === 'orders') {
+                document.getElementById('ordersPage').style.display = 'block';
+                document.querySelectorAll('.nav-btn')[2].classList.add('active');
+                renderOrders();
+            }
         }
 
+        // ========== ТОВАРЫ ==========
         function renderProducts() {
             if (!products || products.length === 0) {
                 document.getElementById('products').innerHTML =
-                    '<div class="empty-state">🍦 Товары загружаются...</div>';
+                    '<div class="empty-state">🍦 Загрузка товаров...</div>';
                 return;
             }
 
             const container = document.getElementById('products');
             container.innerHTML = products.map(p => `
                 <div class="product-card">
-                    <img src="${p.image_url || 'https://p4ostopen-jpg.github.io/MiniApp/ice-cream.jpg'}"
-                         alt="${p.name}" class="product-image"
+                    <img src="${p.image_url}" alt="${p.name}" class="product-image"
                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><rect width=%22300%22 height=%22200%22 fill=%22%23f8fafc%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%2248%22 text-anchor=%22middle%22 dy=%22.3em%22>🍦</text></svg>'">
                     <div class="product-name">${p.name}</div>
                     <div class="product-price">${p.price} ₽</div>
@@ -387,7 +364,6 @@
                     <button class="add-btn" onclick="addToCart(${p.id})">➕ Добавить в корзину</button>
                 </div>
             `).join('');
-            updateDebugInfo();
         }
 
         function increaseQty(id) {
@@ -412,7 +388,12 @@
             if (existing) {
                 existing.quantity += qty;
             } else {
-                cart.push({...product, quantity: qty});
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: qty
+                });
             }
 
             renderCart();
@@ -485,14 +466,15 @@
                 return;
             }
 
-            // Отправляем только id и количество (без price, так как бот сам получит цену из БД)
-            sendToBot('create_order', {
+            // Отправляем заказ
+            tg.sendData(JSON.stringify({
+                action: 'create_order',
                 location: location,
                 items: cart.map(i => ({
                     id: i.id,
                     quantity: i.quantity
                 }))
-            });
+            }));
 
             showToast('✅ Заказ отправлен! Ожидайте подтверждения');
 
@@ -503,7 +485,9 @@
             document.getElementById('location').value = '';
 
             // Переходим на страницу заказов через 1 секунду
-            setTimeout(() => loadOrders(), 1000);
+            setTimeout(() => {
+                loadOrders();
+            }, 1000);
         }
 
         function getLocation() {
@@ -529,7 +513,8 @@
         // ========== ЗАКАЗЫ ==========
         function loadOrders() {
             showPage('orders');
-            sendToBot('get_orders');
+            showToast('🔄 Загрузка заказов...');
+            tg.sendData(JSON.stringify({action: 'get_orders'}));
         }
 
         function renderOrders() {
@@ -586,36 +571,22 @@
             }).join('');
         }
 
-        // ========== НАВИГАЦИЯ ==========
-        function showPage(page) {
-            document.getElementById('mainPage').style.display = 'none';
-            document.getElementById('cartPage').style.display = 'none';
-            document.getElementById('ordersPage').style.display = 'none';
-
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-
-            if (page === 'main') {
-                document.getElementById('mainPage').style.display = 'block';
-                document.querySelectorAll('.nav-btn')[0].classList.add('active');
-                loadProducts();
-            } else if (page === 'cart') {
-                document.getElementById('cartPage').style.display = 'block';
-                document.querySelectorAll('.nav-btn')[1].classList.add('active');
-                renderCart();
-            } else if (page === 'orders') {
-                document.getElementById('ordersPage').style.display = 'block';
-                document.querySelectorAll('.nav-btn')[2].classList.add('active');
-            }
+        // ========== УТИЛИТЫ ==========
+        function showToast(text, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            toast.style.background = isError ? 'rgba(255,107,107,0.9)' : 'rgba(0,0,0,0.8)';
+            toast.textContent = text;
+            setTimeout(() => toast.style.display = 'none', 2000);
         }
 
         // ========== ИНИЦИАЛИЗАЦИЯ ==========
         window.addEventListener('load', () => {
-            document.getElementById('debugPanel').style.display = 'block';
-            logToConsole('success', '🚀 Mini App загружен');
             showPage('main');
+            initApp();
         });
 
-        // Экспортируем функции в глобальную область
+        // Экспортируем функции
         window.showPage = showPage;
         window.increaseQty = increaseQty;
         window.decreaseQty = decreaseQty;
