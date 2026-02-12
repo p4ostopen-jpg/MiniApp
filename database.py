@@ -354,10 +354,10 @@ class Database:
                 await db.commit()
                 return existing[0]
             else:
-                # Получаем следующий ID (начинаем с 6, если 1-5 заняты)
+                # Получаем следующий ID
                 cursor = await db.execute('SELECT MAX(id) FROM products')
                 max_id = await cursor.fetchone()
-                new_id = (max_id[0] or 5) + 1
+                new_id = (max_id[0] or 0) + 1
 
                 await db.execute('''
                                  INSERT INTO products (id, name, price, quantity, is_available)

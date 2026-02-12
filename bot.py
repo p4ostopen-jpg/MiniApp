@@ -69,6 +69,7 @@ async def web_app_handler(message: Message):
                     'data': products
                 }, ensure_ascii=False, default=str)
             )
+            logger.info(f"✅ Отправлено {len(products)} товаров")
 
         elif action == 'create_order':
             location = data.get('location')
@@ -92,29 +93,65 @@ async def web_app_handler(message: Message):
                 orders = await db.get_user_orders(user_id)
                 current_order = next((o for o in orders if o['id'] == order_id), None)
 
-                # Уведомление продавцу
-                await bot.send_message(
-                    SELLER_ID,
-                    f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
-                    f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
-                    f"📍 {location}\n"
-                    f"💰 Сумма: {sum(item['price'] * item['quantity'] for item in items)}₽\n\n"
-                    f"📦 Товары:\n" +
-                    "\n".join([f"• {item['name']} x{item['quantity']} - {item['price'] * item['quantity']}₽"
-                               for item in items])
-                )
+                # Форматируем заказ для отправки в WebApp
+                if current_order:
+                    formatted_order = {
+                        'id': current_order['id'],
+                        'created_at': current_order['created_at'],
+                        'location': current_order['location'],
+                        'total': current_order['total'],
+                        'status': current_order['status'],
+                        'status_text': {
+                            'pending': '⏳ Ждет подтверждения',
+                            'confirmed': '✅ Подтверждено',
+                            'completed': '👍 Выполнен',
+                            'cancelled': '❌ Отменён'
+                        }.get(current_order['status'], current_order['status']),
+                        'items': [
+                            {
+                                'name': item['product_name'],
+                                'quantity': item['quantity'],
+                                'price': item['price'],
+                                'total': item['price'] * item['quantity']
+                            }
+                            for item in current_order['items']
+                        ]
+                    }
 
-                # Отправляем подтверждение и обновленные заказы в WebApp
-                await bot.send_message(
-                    user_id,
-                    json.dumps({
-                        'type': 'order_created',
-                        'order': current_order,
-                        'message': f'✅ Заказ #{order_id} создан!'
-                    }, ensure_ascii=False, default=str)
-                )
+                    # Уведомление продавцу
+                    try:
+                        await bot.send_message(
+                            SELLER_ID,
+                            f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
+                            f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
+                            f"📍 {location}\n"
+                            f"💰 Сумма: {current_order['total']}₽\n\n"
+                            f"📦 Товары:\n" +
+                            "\n".join([f"• {item['product_name']} x{item['quantity']} - {item['price'] * item['quantity']}₽"
+                                       for item in current_order['items']])
+                        )
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка уведомления продавца: {e}")
 
-                logger.info(f"✅ Заказ #{order_id} успешно создан")
+                    # Отправляем подтверждение и обновленные заказы в WebApp
+                    await bot.send_message(
+                        user_id,
+                        json.dumps({
+                            'type': 'order_created',
+                            'order': formatted_order,
+                            'message': f'✅ Заказ #{order_id} создан!'
+                        }, ensure_ascii=False, default=str)
+                    )
+
+                    logger.info(f"✅ Заказ #{order_id} успешно создан")
+                else:
+                    await bot.send_message(
+                        user_id,
+                        json.dumps({
+                            'type': 'error',
+                            'message': 'Ошибка получения заказа'
+                        })
+                    )
             else:
                 await bot.send_message(
                     user_id,
@@ -160,6 +197,7 @@ async def web_app_handler(message: Message):
                     'data': formatted_orders
                 }, ensure_ascii=False, default=str)
             )
+            logger.info(f"✅ Отправлено {len(formatted_orders)} заказов")
 
     except Exception as e:
         logger.error(f"❌ Ошибка: {e}")

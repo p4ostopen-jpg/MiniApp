@@ -485,15 +485,25 @@
                 return;
             }
 
+            // Отправляем только id и количество (без price, так как бот сам получит цену из БД)
             sendToBot('create_order', {
                 location: location,
-                items: cart.map(i => ({id: i.id, name: i.name, price: i.price, quantity: i.quantity}))
+                items: cart.map(i => ({
+                    id: i.id,
+                    quantity: i.quantity
+                }))
             });
 
+            showToast('✅ Заказ отправлен! Ожидайте подтверждения');
+
+            // Очищаем корзину
             cart = [];
             renderCart();
             updateCartCount();
             document.getElementById('location').value = '';
+
+            // Переходим на страницу заказов через 1 секунду
+            setTimeout(() => loadOrders(), 1000);
         }
 
         function getLocation() {
