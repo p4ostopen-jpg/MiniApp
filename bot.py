@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import json
-
 import aiosqlite
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery
@@ -20,7 +19,6 @@ db = Database()
 
 dp.include_router(admin_router)
 
-# ⚠️ ПРОВЕРЬ ЧТО ЭТА ССЫЛКА ТОЧНАЯ!
 WEBAPP_URL = "https://p4ostopen-jpg.github.io/MiniApp/"
 
 
@@ -52,58 +50,20 @@ async def start(message: Message):
 
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
-    print("\n" + "=" * 50)
-    print("🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ ОТ MINI APP!")
-    print(f"📦 Данные: {message.web_app_data.data}")
-    print("=" * 50 + "\n")
-    logger.info(f"🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ: {message.web_app_data.data}")
+    logger.info(f"🔥 ПОЛУЧЕНО СООБЩЕНИЕ: {message.web_app_data.data}")
 
     try:
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
         user_id = message.from_user.id
 
-        logger.info(f"📥 Получен запрос: {action} от {user_id}")
-        logger.info(f"📦 Данные: {data}")
+        logger.info(f"📥 Запрос: {action} от {user_id}")
 
         if action == 'get_products':
             products = await db.get_products()
             await bot.send_message(
                 user_id,
                 json.dumps(products, ensure_ascii=False)
-            )
-
-        elif action == 'get_cart':
-            cart = await db.get_cart(user_id)
-            total = sum(item['price'] * item['quantity'] for item in cart)
-            await bot.send_message(
-                user_id,
-                json.dumps({
-                    'items': [
-                        {'id': item['product_id'], 'name': item['name'],
-                         'price': item['price'], 'quantity': item['quantity']}
-                        for item in cart
-                    ],
-                    'total': total
-                }, ensure_ascii=False)
-            )
-
-        elif action == 'add_to_cart':
-            product_id = data.get('product_id')
-            quantity = data.get('quantity', 1)
-            await db.add_to_cart(user_id, product_id, quantity)
-            await bot.send_message(
-                user_id,
-                json.dumps({'success': True})
-            )
-
-        elif action == 'update_cart':
-            product_id = data.get('product_id')
-            change = data.get('change')
-            await db.update_cart(user_id, product_id, change)
-            await bot.send_message(
-                user_id,
-                json.dumps({'success': True})
             )
 
         elif action == 'create_order':
@@ -117,28 +77,30 @@ async def web_app_handler(message: Message):
                 )
                 return
 
-            # ✅ СОЗДАЁМ ЗАКАЗ ИЗ ТОВАРОВ ИЗ MINI APP
+            # Создаём заказ
             order_id = await db.create_order_from_items(user_id, location, items)
 
             if order_id:
-                # Отправляем уведомление продавцу
+                # Уведомление продавцу
                 await bot.send_message(
                     SELLER_ID,
-                    f"🆕 Новый заказ #{order_id}\n"
-                    f"👤 {message.from_user.full_name}\n"
-                    f"📍 {location}"
+                    f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
+                    f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
+                    f"📍 {location}\n"
+                    f"💰 Сумма: {sum(item['price'] * item['quantity'] for item in items)}₽\n\n"
+                    f"📦 Товары:\n" +
+                    "\n".join([f"• {item['name']} x{item['quantity']} - {item['price'] * item['quantity']}₽"
+                               for item in items])
                 )
 
-                # Отправляем подтверждение пользователю
+                # Подтверждение пользователю
                 await bot.send_message(
                     user_id,
-                    json.dumps({'order_id': order_id, 'success': True})
+                    f"✅ Заказ #{order_id} создан!\n"
+                    f"📍 Адрес: {location}\n"
+                    f"Статус: ⏳ Ожидает подтверждения\n\n"
+                    f"Мы свяжемся с вами для уточнения деталей."
                 )
-
-                # Очищаем корзину пользователя в БД
-                async with aiosqlite.connect(db.db_path) as conn:
-                    await conn.execute('DELETE FROM cart WHERE user_id = ?', (user_id,))
-                    await conn.commit()
 
                 logger.info(f"✅ Заказ #{order_id} успешно создан")
             else:
@@ -149,31 +111,13 @@ async def web_app_handler(message: Message):
 
         elif action == 'get_orders':
             orders = await db.get_user_orders(user_id)
-            detailed_orders = []
-            for order in orders:
-                items = await db.get_order_details(order['id'])
-                detailed_orders.append({
-                    'id': order['id'],
-                    'total': order['total'],
-                    'status': order['status'],
-                    'date': order['created_at'],
-                    'location': order['location'],
-                    'items': [
-                        {
-                            'name': item['product_name'],
-                            'quantity': item['quantity'],
-                            'price': item['price']
-                        }
-                        for item in items
-                    ]
-                })
             await bot.send_message(
                 user_id,
-                json.dumps(detailed_orders, ensure_ascii=False)
+                json.dumps(orders, ensure_ascii=False, default=str)
             )
 
     except Exception as e:
-        logger.error(f"❌ Mini App error: {e}")
+        logger.error(f"❌ Ошибка: {e}")
         await bot.send_message(
             message.from_user.id,
             json.dumps({'error': str(e)})
@@ -186,18 +130,38 @@ async def my_orders(callback: CallbackQuery):
 
     if not orders:
         await callback.message.answer("📋 У вас пока нет заказов")
+        await callback.answer()
         return
 
-    text = "📋 МОИ ЗАКАЗЫ:\n\n"
     for order in orders:
-        status = "✅" if order['status'] == 'completed' else "⏳"
-        text += f"{status} Заказ #{order['id']}\n"
-        text += f"💰 {order['total']}₽\n"
-        text += f"📍 {order['location']}\n"
-        text += f"📅 {order['created_at'][:16]}\n"
-        text += "─" * 20 + "\n"
+        status_emoji = {
+            'pending': '⏳',
+            'confirmed': '✅',
+            'completed': '👍',
+            'cancelled': '❌'
+        }.get(order['status'], '⏳')
 
-    await callback.message.answer(text)
+        status_text = {
+            'pending': 'Ожидает подтверждения',
+            'confirmed': 'Подтверждён',
+            'completed': 'Выполнен',
+            'cancelled': 'Отменён'
+        }.get(order['status'], order['status'])
+
+        text = f"{status_emoji} ЗАКАЗ #{order['id']}\n"
+        text += f"📅 {order['created_at'][:16]}\n"
+        text += f"📍 {order['location']}\n"
+        text += f"💰 Сумма: {order['total']}₽\n"
+        text += f"📊 Статус: {status_text}\n\n"
+        text += "📦 Товары:\n"
+
+        for item in order['items']:
+            text += f"• {item['product_name']} x{item['quantity']} - {item['price']}₽/шт\n"
+
+        text += "─" * 30 + "\n"
+
+        await callback.message.answer(text)
+
     await callback.answer()
 
 
@@ -211,9 +175,8 @@ async def admin_shortcut(callback: CallbackQuery):
 
 async def main():
     await db.create_tables()
-    products = await db.get_products()
-    logger.info(f"🧁 ТОВАРЫ В БД: {products}")
 
+    # Добавляем тестовые товары
     try:
         await db.add_product("Ванильное", 100, 50)
         await db.add_product("Шоколадное", 120, 40)
