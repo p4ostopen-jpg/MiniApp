@@ -291,17 +291,6 @@
             outline: none;
         }
 
-        .location-input.error {
-            border-color: #ff6b6b;
-            animation: shake 0.5s;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
         .checkout-btn {
             width: 100%;
             padding: 16px;
@@ -416,27 +405,6 @@
             align-self: center;
             font-size: 14px;
         }
-
-        .toast {
-            position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-size: 14px;
-            z-index: 1000;
-            animation: fadeInOut 2s ease;
-        }
-
-        @keyframes fadeInOut {
-            0% { opacity: 0; bottom: 80px; }
-            15% { opacity: 1; bottom: 100px; }
-            85% { opacity: 1; bottom: 100px; }
-            100% { opacity: 0; bottom: 80px; }
-        }
     </style>
 </head>
 <body>
@@ -494,8 +462,6 @@
         <span id="cartCount" class="cart-count">0</span>
     </button>
 
-    <div id="toast" style="display:none;" class="toast"></div>
-
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         const tg = window.Telegram.WebApp;
@@ -503,29 +469,15 @@
         tg.MainButton.hide();
 
         console.log("✅ Mini App запущен");
-        console.log("📱 Версия Telegram:", tg.version);
-        console.log("🤖 Платформа:", tg.platform);
+        console.log("🤖 Telegram Web App:", !!tg);
 
         let products = [];
         let cart = [];
-
-        function showToast(text, isError = false) {
-            const toast = document.getElementById('toast');
-            toast.style.display = 'block';
-            toast.style.background = isError ? 'rgba(255, 107, 107, 0.9)' : 'rgba(0,0,0,0.8)';
-            toast.textContent = text;
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 2000);
-        }
 
         function sendToBot(action, data = {}) {
             const payload = JSON.stringify({action, ...data});
             console.log("📤 Отправка:", payload);
             tg.sendData(payload);
-            try {
-                tg.HapticFeedback.impactOccurred('soft');
-            } catch(e) {}
         }
 
         tg.onEvent('webAppData', (event) => {
@@ -538,7 +490,6 @@
                     if (data[0]?.name) {
                         products = data;
                         renderProducts();
-                        showToast(`✅ Загружено ${products.length} товаров`);
                     } else if (data[0]?.id) {
                         renderOrders(data);
                     }
@@ -546,15 +497,6 @@
                     cart = data.items;
                     renderCart();
                     updateCartCount();
-                } else if (data.success) {
-                    showToast('✅ Готово');
-                    try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
-                } else if (data.order_id) {
-                    showToast(`✅ Заказ #${data.order_id} оформлен`);
-                    try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
-                } else if (data.error) {
-                    showToast(`❌ ${data.error}`, true);
-                    try { tg.HapticFeedback.notificationOccurred('error'); } catch(e) {}
                 }
             } catch (e) {
                 console.error("❌ Ошибка:", e);
@@ -611,7 +553,6 @@
             let qty = parseInt(el.innerText);
             if (qty < product.stock) {
                 el.innerText = qty + 1;
-                try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
             }
         }
 
@@ -620,14 +561,13 @@
             let qty = parseInt(el.innerText);
             if (qty > 1) {
                 el.innerText = qty - 1;
-                try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
             }
         }
 
         function addToCart(productId) {
             const qty = parseInt(document.getElementById(`qty_${productId}`).innerText);
             sendToBot('add_to_cart', {product_id: productId, quantity: qty});
-            showToast('✅ Товар добавлен в корзину');
+            tg.showAlert('✅ Товар добавлен в корзину!');
             setTimeout(() => loadCart(), 500);
         }
 
@@ -688,19 +628,18 @@
                             const data = await response.json();
                             const address = data.display_name || `${lat}, ${lon}`;
                             document.getElementById('location').value = address;
-                            showToast(`📍 Адрес получен`);
-                            try { tg.HapticFeedback.impactOccurred('medium'); } catch(e) {}
+                            tg.showAlert(`📍 Адрес: ${address.slice(0, 50)}...`);
                         } catch (error) {
                             document.getElementById('location').value = `${lat}, ${lon}`;
-                            showToast(`📍 Координаты получены`);
+                            tg.showAlert(`📍 Координаты: ${lat}, ${lon}`);
                         }
                     },
                     (error) => {
-                        showToast('❌ Не удалось получить геолокацию', true);
+                        tg.showAlert('❌ Не удалось получить геолокацию. Введите адрес вручную.');
                     }
                 );
             } else {
-                showToast('❌ Геолокация не поддерживается', true);
+                tg.showAlert('❌ Геолокация не поддерживается');
             }
         }
 
@@ -708,22 +647,18 @@
             const location = document.getElementById('location').value;
 
             if (!location) {
-                document.getElementById('location').classList.add('error');
-                showToast('📍 Укажите адрес доставки!', true);
-                setTimeout(() => {
-                    document.getElementById('location').classList.remove('error');
-                }, 1000);
+                tg.showAlert('📍 Укажите адрес доставки!');
                 return;
             }
 
             sendToBot('create_order', {location: location});
-            showToast('✅ Оформляем заказ...');
+            tg.showAlert('✅ Заказ оформлен!');
 
             setTimeout(() => {
                 loadCart();
                 loadOrders();
                 showPage('orders');
-            }, 1500);
+            }, 1000);
         }
 
         function renderOrders(orders) {
@@ -786,8 +721,6 @@
                 navBtns[2].classList.add('active');
                 loadOrders();
             }
-
-            try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
         }
 
         window.onload = () => {
