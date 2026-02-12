@@ -3,644 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍦 Магазин мороженого</title>
+    <title>🚀 Простой Mini App</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        body { background: linear-gradient(145deg, #f6f9fc 0%, #e6f0f5 100%); min-height: 100vh; padding: 16px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .header { background: white; border-radius: 24px; padding: 24px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); text-align: center; }
-        .header h1 { color: #1a2639; margin-bottom: 8px; font-size: 32px; }
-        .header p { color: #6b7b8c; font-size: 16px; }
-        .nav-menu { display: flex; gap: 12px; margin-bottom: 20px; }
-        .nav-btn { flex: 1; background: white; border: none; padding: 14px; border-radius: 20px; color: #4a6fa5; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-        .nav-btn.active { background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; box-shadow: 0 8px 16px rgba(74, 111, 165, 0.2); }
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 20px; }
-        .product-card { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.5); }
-        .product-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(74, 111, 165, 0.1); }
-        .product-image { width: 100%; height: 200px; object-fit: cover; border-radius: 16px; margin-bottom: 16px; background: #f8fafc; }
-        .product-name { font-size: 20px; font-weight: 700; color: #1a2639; margin-bottom: 8px; }
-        .product-price { font-size: 28px; font-weight: 800; color: #4a6fa5; margin-bottom: 12px; }
-        .product-stock { color: #6b7b8c; font-size: 14px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #eef2f5; }
-        .quantity-control { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border-radius: 16px; padding: 4px; margin-bottom: 16px; }
-        .qty-btn { width: 44px; height: 44px; border: none; background: white; border-radius: 12px; font-size: 20px; font-weight: 600; color: #4a6fa5; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
-        .qty-btn:hover { background: #4a6fa5; color: white; }
-        .quantity { font-size: 18px; font-weight: 600; color: #1a2639; }
-        .add-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .add-btn:hover { transform: scale(0.98); box-shadow: 0 8px 16px rgba(74, 111, 165, 0.3); }
-        .cart-page, .orders-page { display: none; }
-        .cart-item { background: white; border-radius: 20px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-        .cart-item-info h4 { color: #1a2639; margin-bottom: 6px; font-size: 16px; }
-        .cart-item-price { color: #4a6fa5; font-weight: 700; font-size: 16px; }
-        .cart-item-controls { display: flex; align-items: center; gap: 12px; }
-        .cart-qty { display: flex; align-items: center; gap: 12px; background: #f8fafc; padding: 6px 12px; border-radius: 20px; }
-        .cart-qty button { width: 32px; height: 32px; border: none; background: white; border-radius: 10px; font-size: 16px; cursor: pointer; color: #4a6fa5; font-weight: 600; }
-        .remove-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px; color: #ff6b6b; }
-        .cart-total { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; text-align: right; font-size: 22px; font-weight: 700; color: #1a2639; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-        .location-section { margin-top: 20px; }
-        .location-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
-        .location-btn { flex: 1; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; border: none; padding: 14px; border-radius: 16px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .location-btn:hover { transform: scale(0.98); box-shadow: 0 8px 16px rgba(74, 111, 165, 0.3); }
-        .location-input { width: 100%; padding: 16px; border: 2px solid #eef2f5; border-radius: 16px; font-size: 15px; transition: border 0.2s; margin-bottom: 15px; }
-        .location-input:focus { border-color: #4a6fa5; outline: none; }
-        .location-input.error { border-color: #ff6b6b; animation: shake 0.5s; }
-        @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-        .checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #51c585 0%, #3aa36a 100%); color: white; border: none; border-radius: 16px; font-size: 18px; font-weight: 600; cursor: pointer; margin-bottom: 20px; }
-        .order-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-        .order-header { display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eef2f5; }
-        .order-id { font-weight: 700; color: #4a6fa5; }
-        .order-status { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-        .status-pending { background: #fff4e0; color: #c47a2d; }
-        .status-completed { background: #e1f7e1; color: #2d7a4b; }
-        .order-items { background: #f8fafc; padding: 12px; border-radius: 12px; margin: 12px 0; font-size: 14px; }
-        .cart-fab { position: fixed; bottom: 24px; right: 24px; width: 64px; height: 64px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); border-radius: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3); cursor: pointer; border: none; transition: transform 0.2s; }
-        .cart-fab:hover { transform: scale(1.1); }
-        .cart-count { position: absolute; top: -6px; right: -6px; background: #ff6b6b; color: white; border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3); }
-        .empty-state { text-align: center; padding: 48px 20px; color: #6b7b8c; background: white; border-radius: 24px; }
-        .loading { text-align: center; padding: 40px; color: #4a6fa5; }
-        .or-divider { color: #6b7b8c; align-self: center; font-size: 14px; }
-        .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; z-index: 1000; animation: fadeInOut 2s ease; }
-        @keyframes fadeInOut { 0% { opacity: 0; bottom: 80px; } 15% { opacity: 1; bottom: 100px; } 85% { opacity: 1; bottom: 100px; } 100% { opacity: 0; bottom: 80px; } }
-        .debug-panel { position: fixed; bottom: 100px; left: 16px; background: rgba(0,0,0,0.8); color: white; padding: 12px; border-radius: 12px; font-size: 12px; max-width: 200px; display: none; z-index: 1001; }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .container {
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        .card {
+            background: white;
+            padding: 40px 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin: 20px 0;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+        }
+        .button:active {
+            transform: scale(0.95);
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            color: #666;
+            font-size: 16px;
+        }
+        .counter {
+            font-size: 48px;
+            font-weight: bold;
+            color: #764ba2;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
-    <div class="debug-panel" id="debugPanel">
-        <div>🔄 Статус: <span id="debugStatus">Инициализация...</span></div>
-        <div>📦 Товаров: <span id="debugProducts">0</span></div>
-        <div>🛒 Корзина: <span id="debugCart">0</span></div>
-    </div>
-
     <div class="container">
-        <div class="nav-menu">
-            <button class="nav-btn active" onclick="showPage('main')">🍦 Меню</button>
-            <button class="nav-btn" onclick="showPage('cart')">🛒 Корзина</button>
-            <button class="nav-btn" onclick="showPage('orders')">📋 Заказы</button>
-        </div>
+        <div class="card">
+            <h1>🚀 ТЕСТОВОЕ ПРИЛОЖЕНИЕ</h1>
 
-        <div id="mainPage">
-            <div class="header">
-                <h1>🍦 Мороженко</h1>
-                <p>Свежее и вкусное мороженое каждый день</p>
+            <div class="counter" id="counter">0</div>
+
+            <button class="button" id="sendButton">
+                📤 ОТПРАВИТЬ ПРИВЕТ
+            </button>
+
+            <div class="status" id="status">
+                ⏳ Нажми кнопку...
             </div>
-            <div id="products" class="products-grid">
-                <div class="loading">Загрузка...</div>
+
+            <div style="margin-top: 20px; font-size: 12px; color: #999;">
+                ID: <span id="userId">-</span>
             </div>
-        </div>
-
-        <div id="cartPage" style="display:none;">
-            <div class="header">
-                <h1>🛒 Корзина</h1>
-            </div>
-            <div id="cartItems"></div>
-            <div id="cartTotal" class="cart-total">0 ₽</div>
-
-            <div class="location-section">
-                <div class="location-buttons">
-                    <button onclick="getLocation()" class="location-btn">
-                        📍 Отправить геолокацию
-                    </button>
-                    <span class="or-divider">или</span>
-                </div>
-
-                <input type="text" id="location" class="location-input"
-                       placeholder="✏️ Введите адрес доставки">
-
-                <button class="checkout-btn" onclick="checkout()">
-                    ✅ Оформить заказ
-                </button>
-            </div>
-        </div>
-
-        <div id="ordersPage" style="display:none;">
-            <div class="header">
-                <h1>📋 Мои заказы</h1>
-            </div>
-            <div id="orders"></div>
         </div>
     </div>
-
-    <button class="cart-fab" onclick="showPage('cart')">
-        🛒
-        <span id="cartCount" class="cart-count">0</span>
-    </button>
-
-    <div id="toast" style="display:none;" class="toast"></div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // ========== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==========
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
-
-        // Принудительная инициализация
         tg.ready();
         tg.expand();
         tg.MainButton.hide();
 
-        // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-        let products = [];
-        let cart = [];
-        let debugMode = true;
+        console.log("✅ Mini App загружен!");
+        console.log("📱 Версия Telegram:", tg.version);
 
-        // ========== ФУНКЦИИ ОТЛАДКИ ==========
-        function updateDebugInfo() {
-            document.getElementById('debugStatus').innerText = 'Активен';
-            document.getElementById('debugProducts').innerText = products.length;
-            document.getElementById('debugCart').innerText = cart.reduce((sum, item) => sum + item.quantity, 0);
+        // Счетчик нажатий
+        let count = 0;
+
+        // Получаем информацию о пользователе
+        const userId = tg.initDataUnsafe?.user?.id || 'неизвестен';
+        document.getElementById('userId').innerText = userId;
+
+        // Функция отправки данных
+        function sendToBot() {
+            count++;
+            document.getElementById('counter').innerText = count;
+
+            // Простое сообщение
+            const message = `Привет! Нажатие #${count} от пользователя ${userId}`;
+
+            console.log("📤 Отправка:", message);
+            document.getElementById('status').innerHTML = `📤 Отправка: "${message}"`;
+
+            // Отправляем в Telegram
+            tg.sendData(message);
+
+            console.log("✅ Отправлено!");
         }
 
-        function logToConsole(type, message, data = null) {
-            const timestamp = new Date().toLocaleTimeString();
-            const logMessage = `[${timestamp}] ${message}`;
+        // Назначаем обработчик на кнопку
+        document.getElementById('sendButton').onclick = sendToBot;
 
-            switch(type) {
-                case 'error':
-                    console.error(`❌ ${logMessage}`, data || '');
-                    break;
-                case 'success':
-                    console.log(`✅ ${logMessage}`, data || '');
-                    break;
-                case 'warning':
-                    console.warn(`⚠️ ${logMessage}`, data || '');
-                    break;
-                default:
-                    console.log(`📌 ${logMessage}`, data || '');
-            }
-        }
-
-        // ========== TELEGRAM WEBAPP ==========
-        console.log("=".repeat(50));
-        logToConsole('info', '🚀 MINI APP ЗАПУЩЕН');
-        logToConsole('info', `📱 Telegram WebApp версия: ${tg.version}`);
-        logToConsole('info', `🤖 Платформа: ${tg.platform}`);
-        logToConsole('info', `🔗 initData: ${tg.initData ? 'Есть' : 'НЕТ!'}`);
-        logToConsole('info', `🔑 initDataUnsafe: ${tg.initDataUnsafe ? 'Есть' : 'НЕТ!'}`);
-        console.log("=".repeat(50));
-
-        // ========== УВЕДОМЛЕНИЯ ==========
-        function showToast(text, isError = false) {
-            const toast = document.getElementById('toast');
-            toast.style.display = 'block';
-            toast.style.background = isError ? 'rgba(255, 107, 107, 0.9)' : 'rgba(0,0,0,0.8)';
-            toast.textContent = text;
-            logToConsole(isError ? 'error' : 'success', `TOAST: ${text}`);
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 2000);
-        }
-
-        // ========== ОТПРАВКА ДАННЫХ В БОТА ==========
-        function sendToBot(action, data = {}) {
-            const payload = JSON.stringify({action, ...data});
-
-            logToConsole('info', `📤 ОТПРАВКА В БОТА:`);
-            console.log(`   Действие: ${action}`);
-            console.log(`   Данные:`, data);
-            console.log(`   Полный payload: ${payload}`);
-
-            try {
-                tg.sendData(payload);
-                logToConsole('success', `✅ Данные отправлены в Telegram`);
-
-                // Показываем индикатор отправки
-                showToast(`📤 Отправка: ${action}`);
-
-            } catch (e) {
-                logToConsole('error', `❌ Ошибка отправки: ${e.message}`);
-                showToast(`❌ Ошибка отправки`, true);
-            }
-        }
-
-        // ========== ПОЛУЧЕНИЕ ДАННЫХ ОТ БОТА ==========
-        tg.onEvent('webAppData', (event) => {
-            console.log("\n" + "=".repeat(50));
-            logToConsole('info', `📥 ПОЛУЧЕНО ОТВЕТ ОТ БОТА!`);
-            console.log(`   Тип события: ${event.eventType || 'webAppData'}`);
-            console.log(`   Данные: ${event.data}`);
-            console.log("=".repeat(50) + "\n");
-
-            if (!event.data) {
-                logToConsole('error', '❌ Пустые данные от бота');
-                return;
-            }
-
-            try {
-                const data = JSON.parse(event.data);
-                logToConsole('success', `✅ JSON распарсен успешно`);
-
-                // ===== ОБРАБОТКА РАЗНЫХ ТИПОВ ОТВЕТОВ =====
-
-                // 1. Массив товаров
-                if (Array.isArray(data)) {
-                    if (data.length > 0 && data[0].name) {
-                        logToConsole('success', `📦 Получено товаров: ${data.length}`);
-                        products = data;
-                        renderProducts();
-                        showToast(`✅ Загружено ${products.length} товаров`);
-                    }
-                    else if (data.length > 0 && data[0].id) {
-                        logToConsole('success', `📋 Получено заказов: ${data.length}`);
-                        renderOrders(data);
-                    }
-                    else {
-                        logToConsole('warning', `⚠️ Получен пустой массив`);
-                    }
-                }
-
-                // 2. Корзина
-                else if (data.items) {
-                    logToConsole('success', `🛒 Получена корзина, ${data.items.length} позиций`);
-                    cart = data.items;
-                    renderCart();
-                    updateCartCount();
-                    showToast(`🛒 Корзина обновлена`);
-                }
-
-                // 3. Успешная операция
-                else if (data.success) {
-                    logToConsole('success', `✅ Операция успешна`);
-                    showToast('✅ Готово');
-                }
-
-                // 4. Создан заказ
-                else if (data.order_id) {
-                    logToConsole('success', `✅ Заказ #${data.order_id} создан`);
-                    showToast(`✅ Заказ #${data.order_id} оформлен`);
-                }
-
-                // 5. Ошибка
-                else if (data.error) {
-                    logToConsole('error', `❌ Ошибка от бота: ${data.error}`);
-                    showToast(`❌ ${data.error}`, true);
-                }
-
-                // 6. Неизвестный формат
-                else {
-                    logToConsole('warning', `⚠️ Неизвестный формат данных:`, data);
-                }
-
-                updateDebugInfo();
-
-            } catch (e) {
-                logToConsole('error', `❌ Ошибка парсинга JSON: ${e.message}`);
-                logToConsole('error', `📦 Сырые данные: ${event.data}`);
-                showToast('❌ Ошибка обработки данных', true);
-            }
+        // Обработка ответа от бота
+        tg.onEvent('webAppData', function(event) {
+            console.log("📥 Получен ответ:", event.data);
+            document.getElementById('status').innerHTML = `✅ Получено: "${event.data}"`;
         });
 
-        // ========== ОБРАБОТЧИКИ ОШИБОК ==========
-        tg.onEvent('viewportChanged', () => {
-            logToConsole('info', `📱 Viewport изменен: ${tg.viewportHeight}px`);
-        });
-
-        tg.onEvent('themeChanged', () => {
-            logToConsole('info', `🎨 Тема изменена`);
-        });
-
-        tg.onEvent('mainButtonClicked', () => {
-            logToConsole('info', `🔘 Нажата главная кнопка`);
-        });
-
-        // ========== ЗАГРУЗКА ДАННЫХ ==========
-        function loadProducts() {
-            logToConsole('info', '🔄 ЗАПРОС ТОВАРОВ...');
-            sendToBot('get_products');
-        }
-
-        function loadCart() {
-            logToConsole('info', '🔄 ЗАПРОС КОРЗИНЫ...');
-            sendToBot('get_cart');
-        }
-
-        function loadOrders() {
-            logToConsole('info', '🔄 ЗАПРОС ЗАКАЗОВ...');
-            sendToBot('get_orders');
-        }
-
-        // ========== ОТОБРАЖЕНИЕ ТОВАРОВ ==========
-        function renderProducts() {
-            const container = document.getElementById('products');
-
-            if (!products || products.length === 0) {
-                container.innerHTML = '<div class="empty-state">🍦 Товары временно закончились</div>';
-                return;
-            }
-
-            container.innerHTML = products.map(p => {
-                // Проверяем URL изображения
-                const imageUrl = p.image_url || `https://p4ostopen-jpg.github.io/MiniApp/${p.name.toLowerCase()}.jpg`;
-
-                return `
-                <div class="product-card">
-                    <img src="${imageUrl}"
-                         alt="${p.name}"
-                         class="product-image"
-                         onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><rect width=%22300%22 height=%22200%22 fill=%22%23f8fafc%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%2248%22 text-anchor=%22middle%22 dy=%22.3em%22>🍦</text></svg>'">
-                    <div class="product-name">${p.name}</div>
-                    <div class="product-price">${p.price} ₽</div>
-                    <div class="product-stock">В наличии: ${p.stock || p.quantity} шт.</div>
-                    <div class="quantity-control">
-                        <button class="qty-btn" onclick="decreaseQty(${p.id})">−</button>
-                        <span id="qty_${p.id}" class="quantity">1</span>
-                        <button class="qty-btn" onclick="increaseQty(${p.id})">+</button>
-                    </div>
-                    <button class="add-btn" onclick="addToCart(${p.id})">
-                        ➕ Добавить в корзину
-                    </button>
-                </div>
-            `}).join('');
-
-            logToConsole('success', `🖼 Отображено ${products.length} товаров`);
-            updateDebugInfo();
-        }
-
-        function increaseQty(id) {
-            const el = document.getElementById(`qty_${id}`);
-            const product = products.find(p => p.id === id);
-            let qty = parseInt(el.innerText);
-            if (qty < (product.stock || product.quantity)) {
-                el.innerText = qty + 1;
-            }
-        }
-
-        function decreaseQty(id) {
-            const el = document.getElementById(`qty_${id}`);
-            let qty = parseInt(el.innerText);
-            if (qty > 1) {
-                el.innerText = qty - 1;
-            }
-        }
-
-        function addToCart(productId) {
-            const qty = parseInt(document.getElementById(`qty_${productId}`).innerText);
-            logToConsole('info', `➕ Добавление в корзину: товар ${productId}, ${qty} шт.`);
-            sendToBot('add_to_cart', {product_id: productId, quantity: qty});
-            showToast('✅ Товар добавлен в корзину');
-            setTimeout(() => loadCart(), 500);
-        }
-
-        // ========== ОТОБРАЖЕНИЕ КОРЗИНЫ ==========
-        function renderCart() {
-            const container = document.getElementById('cartItems');
-
-            if (!cart || cart.length === 0) {
-                container.innerHTML = '<div class="empty-state">🛒 Корзина пуста</div>';
-                document.getElementById('cartTotal').innerText = '0 ₽';
-                return;
-            }
-
-            let total = 0;
-            container.innerHTML = cart.map(item => {
-                total += item.price * item.quantity;
-                return `
-                    <div class="cart-item">
-                        <div class="cart-item-info">
-                            <h4>${item.name}</h4>
-                            <div class="cart-item-price">${item.price} ₽</div>
-                        </div>
-                        <div class="cart-item-controls">
-                            <div class="cart-qty">
-                                <button onclick="updateCart(${item.id}, -1)">−</button>
-                                <span>${item.quantity}</span>
-                                <button onclick="updateCart(${item.id}, 1)">+</button>
-                            </div>
-                            <button class="remove-btn" onclick="updateCart(${item.id}, -1000)">🗑️</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            document.getElementById('cartTotal').innerText = `${total} ₽`;
-            logToConsole('success', `🛒 Отображена корзина: ${cart.length} позиций, сумма ${total}₽`);
-            updateDebugInfo();
-        }
-
-        function updateCart(productId, change) {
-            logToConsole('info', `🔄 Обновление корзины: товар ${productId}, изменение ${change}`);
-            sendToBot('update_cart', {product_id: productId, change: change});
-            setTimeout(() => loadCart(), 200);
-        }
-
-        function updateCartCount() {
-            const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-            document.getElementById('cartCount').innerText = count;
-        }
-
-        // ========== ГЕОЛОКАЦИЯ ==========
-        function getLocation() {
-            logToConsole('info', '📍 Запрос геолокации...');
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    async (position) => {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
-                        logToConsole('success', `📍 Координаты: ${lat}, ${lon}`);
-
-                        try {
-                            const response = await fetch(
-                                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`
-                            );
-                            const data = await response.json();
-                            const address = data.display_name || `${lat}, ${lon}`;
-                            document.getElementById('location').value = address;
-                            showToast('📍 Адрес получен');
-                            logToConsole('success', `📍 Адрес: ${address}`);
-                        } catch (error) {
-                            document.getElementById('location').value = `${lat}, ${lon}`;
-                            showToast('📍 Координаты получены');
-                            logToConsole('warning', `📍 Только координаты: ${lat}, ${lon}`);
-                        }
-                    },
-                    (error) => {
-                        let errorMessage = 'Не удалось получить геолокацию';
-                        if (error.code === 1) errorMessage = 'Доступ запрещен';
-                        if (error.code === 2) errorMessage = 'Ошибка определения';
-                        if (error.code === 3) errorMessage = 'Время ожидания истекло';
-
-                        logToConsole('error', `📍 Ошибка геолокации: ${errorMessage}`);
-                        showToast(`❌ ${errorMessage}`, true);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            } else {
-                logToConsole('error', '📍 Геолокация не поддерживается браузером');
-                showToast('❌ Геолокация не поддерживается', true);
-            }
-        }
-
-        // ========== ОФОРМЛЕНИЕ ЗАКАЗА ==========
-        function checkout() {
-            const location = document.getElementById('location').value.trim();
-
-            if (!location) {
-                document.getElementById('location').classList.add('error');
-                showToast('📍 Укажите адрес доставки!', true);
-                logToConsole('error', '❌ Не указан адрес доставки');
-
-                setTimeout(() => {
-                    document.getElementById('location').classList.remove('error');
-                }, 1000);
-                return;
-            }
-
-            logToConsole('info', `✅ Оформление заказа. Адрес: ${location}`);
-            sendToBot('create_order', {location: location});
-            showToast('✅ Оформляем заказ...');
-
-            setTimeout(() => {
-                loadCart();
-                loadOrders();
-                showPage('orders');
-            }, 1500);
-        }
-
-        // ========== ОТОБРАЖЕНИЕ ЗАКАЗОВ ==========
-        function renderOrders(orders) {
-            const container = document.getElementById('orders');
-
-            if (!orders || orders.length === 0) {
-                container.innerHTML = '<div class="empty-state">📋 У вас пока нет заказов</div>';
-                return;
-            }
-
-            container.innerHTML = orders.map(order => {
-                const statusClass = order.status === 'completed' ? 'status-completed' : 'status-pending';
-                const statusText = order.status === 'completed' ? '✅ Выполнен' : '⏳ В обработке';
-
-                let itemsList = '🔄 Загрузка...';
-                if (order.items && order.items.length > 0) {
-                    itemsList = order.items.map(item =>
-                        `🍦 ${item.name} x${item.quantity} = ${item.price * item.quantity}₽`
-                    ).join('<br>');
-                }
-
-                const orderDate = order.date ? new Date(order.date).toLocaleString('ru-RU') : 'Дата неизвестна';
-
-                return `
-                    <div class="order-card">
-                        <div class="order-header">
-                            <span class="order-id">Заказ #${order.id}</span>
-                            <span class="order-status ${statusClass}">${statusText}</span>
-                        </div>
-                        <div><strong>📍 Адрес:</strong> ${order.location || 'Не указан'}</div>
-                        <div class="order-items">
-                            <strong>🛍 Состав заказа:</strong><br>
-                            ${itemsList}
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span><strong>💰 Сумма:</strong> ${order.total || 0} ₽</span>
-                            <span><strong>📅 Дата:</strong> ${orderDate}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            logToConsole('success', `📋 Отображено ${orders.length} заказов`);
-        }
-
-        // ========== НАВИГАЦИЯ ==========
-        function showPage(page) {
-            const mainPage = document.getElementById('mainPage');
-            const cartPage = document.getElementById('cartPage');
-            const ordersPage = document.getElementById('ordersPage');
-            const navBtns = document.querySelectorAll('.nav-btn');
-
-            mainPage.style.display = 'none';
-            cartPage.style.display = 'none';
-            ordersPage.style.display = 'none';
-            navBtns.forEach(btn => btn.classList.remove('active'));
-
-            logToConsole('info', `🔄 Переход на страницу: ${page}`);
-
-            if (page === 'main') {
-                mainPage.style.display = 'block';
-                navBtns[0].classList.add('active');
-                loadProducts();
-            } else if (page === 'cart') {
-                cartPage.style.display = 'block';
-                navBtns[1].classList.add('active');
-                loadCart();
-            } else if (page === 'orders') {
-                ordersPage.style.display = 'block';
-                navBtns[2].classList.add('active');
-                loadOrders();
-            }
-        }
-
-        // ========== ПРОВЕРКА СОЕДИНЕНИЯ ==========
-        function checkConnection() {
-            logToConsole('info', '🔍 ПРОВЕРКА СОЕДИНЕНИЯ...');
-            console.log(`   📱 WebApp готов: ${tg.isReady}`);
-            console.log(`   🔗 initData: ${tg.initData ? '✅' : '❌'}`);
-            console.log(`   🆔 user: ${tg.initDataUnsafe?.user?.id || 'неизвестен'}`);
-            console.log(`   🎨 цветовая схема: ${tg.colorScheme || 'стандарт'}`);
-        }
-
-        // ========== ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ==========
-        window.addEventListener('load', () => {
-            console.log("\n" + "🔥".repeat(30));
-            logToConsole('info', '🚀 WEBAPP ПОЛНОСТЬЮ ЗАГРУЖЕН');
-            console.log("🔥".repeat(30) + "\n");
-
-            // Показываем отладочную панель
-            if (debugMode) {
-                document.getElementById('debugPanel').style.display = 'block';
-            }
-
-            // Проверяем соединение
-            setTimeout(checkConnection, 500);
-
-            // Отправляем запрос товаров
-            setTimeout(() => {
-                logToConsole('info', '⚡ ОТПРАВКА ПЕРВОГО ЗАПРОСА ТОВАРОВ');
-                sendToBot('get_products');
-            }, 1000);
-
-            // Дополнительная проверка
-            setTimeout(() => {
-                if (products.length === 0) {
-                    logToConsole('warning', '⚠️ Товары не загружены, повторный запрос...');
-                    sendToBot('get_products');
-                }
-            }, 3000);
-
-            setTimeout(() => {
-                if (cart.length === 0) {
-                    logToConsole('info', '🔄 Запрос корзины...');
-                    loadCart();
-                }
-            }, 2000);
-
-            updateDebugInfo();
-        });
-
-        // ========== ОБРАБОТКА ОШИБОК ==========
-        window.addEventListener('error', (event) => {
-            logToConsole('error', `💥 Глобальная ошибка: ${event.error?.message || event.message}`);
-        });
-
-        window.addEventListener('unhandledrejection', (event) => {
-            logToConsole('error', `💥 Unhandled Promise: ${event.reason}`);
-        });
-
-        // Экспортируем функции в глобальную область
-        window.showPage = showPage;
-        window.increaseQty = increaseQty;
-        window.decreaseQty = decreaseQty;
-        window.addToCart = addToCart;
-        window.updateCart = updateCart;
-        window.getLocation = getLocation;
-        window.checkout = checkout;
-        window.sendToBot = sendToBot;
-        window.loadProducts = loadProducts;
-        window.loadCart = loadCart;
-        window.loadOrders = loadOrders;
-
-        logToConsole('success', '✅ СКРИПТ ПОЛНОСТЬЮ ЗАГРУЖЕН');
+        // Отправляем приветствие при загрузке
+        window.onload = function() {
+            console.log("🚀 Страница загружена, жду действий...");
+            document.getElementById('status').innerHTML = '👋 Нажми кнопку для отправки!';
+        };
     </script>
 </body>
 </html>
