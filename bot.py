@@ -105,12 +105,60 @@ async def web_app_handler(message: Message):
                 json.dumps({'success': True})
             )
 
+
         elif action == 'create_order':
+
             location = data.get('location')
-            if not location:
+
+            items = data.get('items', [])  # ← вот что теперь приходит
+
+            if not location or not items:
                 await bot.send_message(
+
                     user_id,
-                    json.dumps({'error': 'Нет адреса'})
+
+                    json.dumps({'error': 'Нет адреса или товаров'})
+
+                )
+
+                return
+
+            # Создаём заказ напрямую из присланных товаров
+
+            order_id = await db.create_order_from_items(user_id, location, items)
+
+            if order_id:
+
+                await bot.send_message(
+
+                    SELLER_ID,
+
+                    f"🆕 Новый заказ #{order_id}\n"
+
+                    f"👤 {message.from_user.full_name}\n"
+
+                    f"📍 {location}"
+
+                )
+
+                await bot.send_message(
+
+                    user_id,
+
+                    json.dumps({'order_id': order_id, 'success': True})
+
+                )
+
+                logger.info(f"Заказ #{order_id} успешно создан")
+
+            else:
+
+                await bot.send_message(
+
+                    user_id,
+
+                    json.dumps({'error': 'Корзина пуста или ошибка создания'})
+
                 )
                 return
 

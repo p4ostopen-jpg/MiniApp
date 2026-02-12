@@ -222,3 +222,49 @@ class Database:
                 (product_id,)
             )
             await db.commit()
+
+    async def create_order_from_items(self, user_id, location, items):
+        """Создаёт заказ из списка товаров, пришедших из Mini App"""
+        async with aiosqlite.connect(self.db_path) as db:
+            total = 0
+            order_items = []
+
+            for item in items:
+                prod_id = item['id']
+                qty = item['quantity']
+
+                cursor = await db.execute(
+                    'SELECT name, price, quantity FROM products WHERE id = ?',
+                    (prod_id,)
+                )
+                row = await cursor.fetchone()
+                if not row or row[2] < qty:   # нет товара или мало на складе
+                    continue
+
+                name, price, _ = row
+                total += price * qty
+                order_items.append((prod_id, name, qty, price))
+
+            if total == 0:
+                return None
+
+            # Создаём заказ
+            cursor = await db.execute('''
+                INSERT INTO orders (user_id, location, total)
+                VALUES (?, ?, ?)
+            ''', (user_id, location, total))
+            order_id = cursor.lastrowid
+
+            # Добавляем товары в заказ и списываем со склада
+            for prod_id, name, qty, price in order_items:
+                await db.execute('''
+                    INSERT INTO order_items (order_id, product_name, quantity, price)
+                    VALUES (?, ?, ?, ?)
+                ''', (order_id, name, qty, price))
+
+                await db.execute('''
+                    UPDATE products SET quantity = quantity - ? WHERE id = ?
+                ''', (qty, prod_id))
+
+            await db.commit()
+            return order_id
