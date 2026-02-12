@@ -92,7 +92,7 @@ class Database:
                 p['stock'] = p['quantity']
                 result.append(p)
             return result
-        
+
     async def get_cart(self, user_id):
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
