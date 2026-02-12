@@ -51,34 +51,41 @@ async def web_app_handler(message: Message):
     try:
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
-        user_id = message.from_user.id
 
         if action == 'create_order':
             order_data = data.get('order', {})
 
             # Сохраняем заказ в базу данных
             order_id = await db.create_order_from_items(
-                user_id,
+                message.from_user.id,
                 order_data.get('location'),
                 order_data.get('items', [])
             )
 
             if order_id:
                 # Уведомление продавцу
-                await bot.send_message(
-                    SELLER_ID,
+                seller_text = (
                     f"🆕 НОВЫЙ ЗАКАЗ #{order_data.get('id')}\n"
                     f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
                     f"📍 {order_data.get('location')}\n"
                     f"💰 Сумма: {order_data.get('total')}₽\n\n"
-                    f"📦 Товары:\n" +
-                    "\n".join([f"• {item['name']} x{item['quantity']} - {item['price'] * item['quantity']}₽"
-                               for item in order_data.get('items', [])])
+                    f"📦 Товары:\n"
                 )
 
+                for item in order_data.get('items', []):
+                    seller_text += f"• {item['name']} x{item['quantity']} - {item['price'] * item['quantity']}₽\n"
+
+                await bot.send_message(SELLER_ID, seller_text)
+
+                # Уведомление админам
+                for admin_id in ADMIN_IDS:
+                    if admin_id != SELLER_ID:
+                        try:
+                            await bot.send_message(admin_id, seller_text)
+                        except:
+                            pass
+
                 logger.info(f"✅ Заказ #{order_id} успешно создан")
-            else:
-                logger.error("❌ Ошибка создания заказа")
 
     except Exception as e:
         logger.error(f"❌ Ошибка: {e}")
@@ -91,8 +98,8 @@ async def main():
     try:
         await db.add_product("Ванильное", 100, 50)
         await db.add_product("Шоколадное", 120, 40)
-        await db.add_product("Клубничное", 110, 30)
-        await db.add_product("Фисташковое", 150, 25)
+        await db.add_product("Клубничное", 115, 30)
+        await db.add_product("Фисташковое", 155, 25)
         await db.add_product("Карамельное", 130, 35)
         logger.info("✅ Тестовые товары добавлены")
     except Exception as e:
