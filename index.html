@@ -46,12 +46,19 @@
         @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
         .checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #51c585 0%, #3aa36a 100%); color: white; border: none; border-radius: 16px; font-size: 18px; font-weight: 600; cursor: pointer; margin-bottom: 20px; }
         .order-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-        .order-header { display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eef2f5; }
-        .order-id { font-weight: 700; color: #4a6fa5; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eef2f5; }
+        .order-id { font-weight: 700; color: #4a6fa5; font-size: 16px; }
         .order-status { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
         .status-pending { background: #fff4e0; color: #c47a2d; }
-        .status-completed { background: #e1f7e1; color: #2d7a4b; }
+        .status-confirmed { background: #e3f2fd; color: #1976d2; }
+        .status-completed { background: #e8f5e9; color: #2e7d32; }
+        .status-cancelled { background: #ffebee; color: #c62828; }
         .order-items { background: #f8fafc; padding: 12px; border-radius: 12px; margin: 12px 0; font-size: 14px; }
+        .order-total { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eef2f5; }
+        .order-total span:first-child { color: #6b7b8c; font-size: 14px; }
+        .order-total span:last-child { font-size: 20px; font-weight: 800; color: #1a2639; }
+        .order-location { color: #6b7b8c; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+        .order-date { color: #6b7b8c; font-size: 14px; display: flex; align-items: center; gap: 4px; }
         .cart-fab { position: fixed; bottom: 24px; right: 24px; width: 64px; height: 64px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); border-radius: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3); cursor: pointer; border: none; transition: transform 0.2s; }
         .cart-fab:hover { transform: scale(1.1); }
         .cart-count { position: absolute; top: -6px; right: -6px; background: #ff6b6b; color: white; border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3); }
@@ -125,14 +132,7 @@
         tg.MainButton.hide();
 
         // ========== ДАННЫЕ ==========
-        let products = [
-            { id: 1, name: "Ванильное", price: 100, stock: 50, image_url: "https://p4ostopen-jpg.github.io/MiniApp/vanilla.jpg" },
-            { id: 2, name: "Шоколадное", price: 120, stock: 40, image_url: "https://p4ostopen-jpg.github.io/MiniApp/chocolate.jpg" },
-            { id: 3, name: "Клубничное", price: 110, stock: 30, image_url: "https://p4ostopen-jpg.github.io/MiniApp/strawberry.jpg" },
-            { id: 4, name: "Фисташковое", price: 150, stock: 25, image_url: "https://p4ostopen-jpg.github.io/MiniApp/pistachio.jpg" },
-            { id: 5, name: "Карамельное", price: 130, stock: 35, image_url: "https://p4ostopen-jpg.github.io/MiniApp/caramel.jpg" }
-        ];
-
+        let products = [];
         let cart = [];
 
         // ========== ОТЛАДКА ==========
@@ -158,32 +158,73 @@
             setTimeout(() => toast.style.display = 'none', 2000);
         }
 
-        // ========== ОТПРАВКА В БОТ (только заказ) ==========
+        // ========== ОТПРАВКА В БОТ ==========
         function sendToBot(action, data = {}) {
             try {
                 tg.sendData(JSON.stringify({action, ...data}));
-                showToast(`📤 ${action}`);
+                logToConsole('info', `📤 Отправка: ${action}`, data);
             } catch (e) {
                 console.error(e);
+                showToast('❌ Ошибка отправки', true);
             }
         }
 
-        // ========== ТОВАРЫ ==========
-        function loadProducts() {
-            renderProducts();
-            showToast(`✅ Загружено ${products.length} товаров`);
-            updateDebugInfo();
+        // ========== ПОЛУЧЕНИЕ ОТВЕТОВ ==========
+        function setupBotListener() {
+            tg.onEvent('message', function(message) {
+                logToConsole('info', '📩 Получено от бота:', message);
+
+                try {
+                    const data = JSON.parse(message);
+
+                    if (Array.isArray(data)) {
+                        if (data.length > 0) {
+                            if (data[0].name !== undefined && data[0].price !== undefined) {
+                                // Это товары
+                                products = data;
+                                renderProducts();
+                                showToast(`✅ Загружено ${data.length} товаров`);
+                                updateDebugInfo();
+                            } else if (data[0].id !== undefined && data[0].status !== undefined) {
+                                // Это заказы
+                                renderOrders(data);
+                                showToast(`📋 Загружено ${data.length} заказов`);
+                            }
+                        } else {
+                            // Пустой массив - нет заказов
+                            renderOrders([]);
+                        }
+                    } else if (data.success) {
+                        // Успешное создание заказа
+                        showToast(`✅ Заказ #${data.order_id} создан`);
+                        // Обновляем список заказов
+                        setTimeout(() => {
+                            sendToBot('get_orders');
+                        }, 500);
+                    } else if (data.error) {
+                        showToast(`❌ ${data.error}`, true);
+                    }
+                } catch (e) {
+                    logToConsole('info', 'Обычное сообщение, не JSON');
+                }
+            });
         }
 
+        // ========== ТОВАРЫ ==========
         function renderProducts() {
             const container = document.getElementById('products');
+            if (!products || products.length === 0) {
+                container.innerHTML = '<div class="empty-state">🍦 Товары загружаются...</div>';
+                return;
+            }
+
             container.innerHTML = products.map(p => `
                 <div class="product-card">
-                    <img src="${p.image_url}" alt="${p.name}" class="product-image"
+                    <img src="${p.image_url || 'https://p4ostopen-jpg.github.io/MiniApp/ice-cream.jpg'}" alt="${p.name}" class="product-image"
                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><rect width=%22300%22 height=%22200%22 fill=%22%23f8fafc%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%2248%22 text-anchor=%22middle%22 dy=%22.3em%22>🍦</text></svg>'">
                     <div class="product-name">${p.name}</div>
                     <div class="product-price">${p.price} ₽</div>
-                    <div class="product-stock">В наличии: ${p.stock} шт.</div>
+                    <div class="product-stock">В наличии: ${p.stock || p.quantity || 0} шт.</div>
                     <div class="quantity-control">
                         <button class="qty-btn" onclick="decreaseQty(${p.id})">−</button>
                         <span id="qty_${p.id}" class="quantity">1</span>
@@ -198,7 +239,7 @@
             const el = document.getElementById(`qty_${id}`);
             let qty = parseInt(el.innerText);
             const prod = products.find(p => p.id === id);
-            if (qty < prod.stock) el.innerText = qty + 1;
+            if (qty < (prod.stock || prod.quantity || 0)) el.innerText = qty + 1;
         }
 
         function decreaseQty(id) {
@@ -207,14 +248,23 @@
             if (qty > 1) el.innerText = qty - 1;
         }
 
-        // ========== КОРЗИНА (локальная) ==========
+        // ========== КОРЗИНА ==========
         function addToCart(productId) {
             const qty = parseInt(document.getElementById(`qty_${productId}`).innerText);
             const product = products.find(p => p.id === productId);
 
             const existing = cart.find(i => i.id === productId);
-            if (existing) existing.quantity += qty;
-            else cart.push({...product, quantity: qty});
+            if (existing) {
+                existing.quantity += qty;
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: qty,
+                    image_url: product.image_url
+                });
+            }
 
             renderCart();
             updateCartCount();
@@ -256,8 +306,13 @@
         function updateCart(productId, change) {
             const item = cart.find(i => i.id === productId);
             if (!item) return;
+
             item.quantity += change;
-            if (item.quantity <= 0) cart = cart.filter(i => i.id !== productId);
+
+            if (item.quantity <= 0) {
+                cart = cart.filter(i => i.id !== productId);
+            }
+
             renderCart();
             updateCartCount();
         }
@@ -267,12 +322,7 @@
             document.getElementById('cartCount').innerText = count;
         }
 
-        function loadCart() {
-            renderCart();
-            updateCartCount();
-        }
-
-        // ========== ОФОРМЛЕНИЕ ==========
+        // ========== ОФОРМЛЕНИЕ ЗАКАЗА ==========
         function checkout() {
             const location = document.getElementById('location').value.trim();
             if (!location) {
@@ -282,16 +332,26 @@
                 return;
             }
 
+            if (cart.length === 0) {
+                showToast('🛒 Корзина пуста!', true);
+                return;
+            }
+
             sendToBot('create_order', {
                 location: location,
                 items: cart.map(i => ({id: i.id, quantity: i.quantity}))
             });
 
-            showToast('✅ Заказ отправлен боту!');
+            showToast('✅ Заказ отправлен!');
+
+            // Очищаем корзину
             cart = [];
             renderCart();
             updateCartCount();
-            showPage('orders');
+            document.getElementById('location').value = '';
+
+            // Переходим на страницу заказов
+            setTimeout(() => showPage('orders'), 1000);
         }
 
         function getLocation() {
@@ -303,18 +363,83 @@
                         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`);
                         const data = await res.json();
                         document.getElementById('location').value = data.display_name || `${lat}, ${lon}`;
+                        showToast('📍 Адрес получен');
                     } catch {
                         document.getElementById('location').value = `${lat}, ${lon}`;
+                        showToast('📍 Координаты получены');
                     }
-                    showToast('📍 Адрес получен');
+                }, () => {
+                    showToast('❌ Не удалось получить геолокацию', true);
                 });
+            } else {
+                showToast('❌ Геолокация не поддерживается', true);
             }
         }
 
+        // ========== ЗАКАЗЫ ==========
         function loadOrders() {
-            document.getElementById('orders').innerHTML = '<div class="empty-state">📋 Заказы хранятся в боте</div>';
+            document.getElementById('orders').innerHTML = '<div class="loading">⏳ Загрузка заказов...</div>';
+            sendToBot('get_orders');
         }
 
+        function renderOrders(orders) {
+            const container = document.getElementById('orders');
+
+            if (!orders || orders.length === 0) {
+                container.innerHTML = '<div class="empty-state">📋 У вас пока нет заказов</div>';
+                return;
+            }
+
+            container.innerHTML = orders.map(order => {
+                // Определяем класс статуса
+                let statusClass = 'status-pending';
+                if (order.status === 'confirmed') statusClass = 'status-confirmed';
+                else if (order.status === 'completed') statusClass = 'status-completed';
+                else if (order.status === 'cancelled') statusClass = 'status-cancelled';
+
+                // Текст статуса с эмодзи
+                const statusText = order.status_text || {
+                    'pending': '⏳ Ожидает подтверждения',
+                    'confirmed': '✅ Подтверждён',
+                    'completed': '👍 Выполнен',
+                    'cancelled': '❌ Отменён'
+                }[order.status] || order.status;
+
+                return `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <span class="order-id">Заказ #${order.id}</span>
+                            <span class="order-status ${statusClass}">${statusText}</span>
+                        </div>
+
+                        <div style="margin-bottom: 12px;">
+                            <div class="order-location">
+                                📍 ${order.location}
+                            </div>
+                            <div class="order-date">
+                                📅 ${order.date || order.created_at || ''}
+                            </div>
+                        </div>
+
+                        <div class="order-items">
+                            ${order.items.map(item => `
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span>🍦 ${item.name || item.product_name} ×${item.quantity}</span>
+                                    <span style="font-weight: 600; color: #4a6fa5;">${item.price}₽/шт</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="order-total">
+                            <span>Общая сумма:</span>
+                            <span>${order.total} ₽</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ========== НАВИГАЦИЯ ==========
         function showPage(page) {
             document.getElementById('mainPage').style.display = 'none';
             document.getElementById('cartPage').style.display = 'none';
@@ -325,11 +450,11 @@
             if (page === 'main') {
                 document.getElementById('mainPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[0].classList.add('active');
-                loadProducts();
+                sendToBot('get_products');
             } else if (page === 'cart') {
                 document.getElementById('cartPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[1].classList.add('active');
-                loadCart();
+                renderCart();
             } else if (page === 'orders') {
                 document.getElementById('ordersPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[2].classList.add('active');
@@ -337,13 +462,22 @@
             }
         }
 
-        // ========== ЗАПУСК ==========
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         window.addEventListener('load', () => {
             document.getElementById('debugPanel').style.display = 'block';
             logToConsole('success', '🚀 Mini App загружен');
+
+            // Настраиваем получение сообщений от бота
+            setupBotListener();
+
+            // Показываем главную страницу
             showPage('main');
+
+            // Загружаем товары
+            sendToBot('get_products');
         });
 
+        // ========== ЭКСПОРТ ФУНКЦИЙ ==========
         window.showPage = showPage;
         window.increaseQty = increaseQty;
         window.decreaseQty = decreaseQty;
@@ -351,7 +485,6 @@
         window.updateCart = updateCart;
         window.getLocation = getLocation;
         window.checkout = checkout;
-        window.loadCart = loadCart;
         window.loadOrders = loadOrders;
     </script>
 </body>

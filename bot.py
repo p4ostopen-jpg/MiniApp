@@ -77,32 +77,24 @@ async def web_app_handler(message: Message):
                 )
                 return
 
-            # Создаём заказ
             order_id = await db.create_order_from_items(user_id, location, items)
 
             if order_id:
                 # Уведомление продавцу
                 await bot.send_message(
                     SELLER_ID,
-                    f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
-                    f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
-                    f"📍 {location}\n"
-                    f"💰 Сумма: {sum(item['price'] * item['quantity'] for item in items)}₽\n\n"
-                    f"📦 Товары:\n" +
-                    "\n".join([f"• {item['name']} x{item['quantity']} - {item['price'] * item['quantity']}₽"
-                               for item in items])
+                    f"🆕 НОВЫЙ ЗАКАЗ #{order_id}"
                 )
 
-                # Подтверждение пользователю
+                # Отправляем подтверждение в Mini App
                 await bot.send_message(
                     user_id,
-                    f"✅ Заказ #{order_id} создан!\n"
-                    f"📍 Адрес: {location}\n"
-                    f"Статус: ⏳ Ожидает подтверждения\n\n"
-                    f"Мы свяжемся с вами для уточнения деталей."
+                    json.dumps({
+                        'success': True,
+                        'order_id': order_id,
+                        'message': 'Заказ создан'
+                    })
                 )
-
-                logger.info(f"✅ Заказ #{order_id} успешно создан")
             else:
                 await bot.send_message(
                     user_id,
@@ -111,9 +103,51 @@ async def web_app_handler(message: Message):
 
         elif action == 'get_orders':
             orders = await db.get_user_orders(user_id)
+
+            # Форматируем заказы для отображения в Mini App
+            formatted_orders = []
+            for order in orders:
+                # Статус на русском
+                status_text = {
+                    'pending': '⏳ Ожидает подтверждения',
+                    'confirmed': '✅ Подтверждён',
+                    'completed': '👍 Выполнен',
+                    'cancelled': '❌ Отменён'
+                }.get(order['status'], order['status'])
+
+                # Эмодзи для статуса
+                status_emoji = {
+                    'pending': '⏳',
+                    'confirmed': '✅',
+                    'completed': '👍',
+                    'cancelled': '❌'
+                }.get(order['status'], '⏳')
+
+                formatted_order = {
+                    'id': order['id'],
+                    'date': order['created_at'][:16],
+                    'location': order['location'],
+                    'total': order['total'],
+                    'status': order['status'],
+                    'status_text': status_text,
+                    'status_emoji': status_emoji,
+                    'items': []
+                }
+
+                for item in order['items']:
+                    formatted_order['items'].append({
+                        'name': item['product_name'],
+                        'quantity': item['quantity'],
+                        'price': item['price'],
+                        'total': item['price'] * item['quantity']
+                    })
+
+                formatted_orders.append(formatted_order)
+
+            # Отправляем JSON с заказами в Mini App
             await bot.send_message(
                 user_id,
-                json.dumps(orders, ensure_ascii=False, default=str)
+                json.dumps(formatted_orders, ensure_ascii=False)
             )
 
     except Exception as e:
@@ -122,7 +156,6 @@ async def web_app_handler(message: Message):
             message.from_user.id,
             json.dumps({'error': str(e)})
         )
-
 
 @dp.callback_query(F.data == "my_orders")
 async def my_orders(callback: CallbackQuery):
