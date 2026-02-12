@@ -17,7 +17,6 @@ db = Database()
 
 dp.include_router(admin_router)
 
-# 🌟 ТВОЯ РАБОЧАЯ ССЫЛКА!
 WEBAPP_URL = "https://p4ostopen-jpg.github.io/MiniApp/"
 
 
@@ -55,6 +54,8 @@ async def web_app_handler(message: Message):
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
         user_id = message.from_user.id
+
+        logger.info(f"📥 Получен запрос: {action} от {user_id}")
 
         if action == 'get_products':
             products = await db.get_products()
@@ -161,7 +162,6 @@ async def admin_shortcut(callback: CallbackQuery):
 async def main():
     await db.create_tables()
 
-    # Добавляем тестовые товары
     try:
         await db.add_product("Ванильное", 100, 50)
         await db.add_product("Шоколадное", 120, 40)

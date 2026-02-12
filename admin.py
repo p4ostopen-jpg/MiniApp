@@ -19,8 +19,6 @@ def admin_required(func):
     return wrapper
 
 
-@router.message(Command("admin"))
-@admin_required
 async def admin_panel(message: Message):
     builder = InlineKeyboardBuilder()
     builder.button(text="➕ Добавить товар", callback_data="admin_add")
@@ -34,6 +32,12 @@ async def admin_panel(message: Message):
         "Выберите действие:",
         reply_markup=builder.as_markup()
     )
+
+
+@router.message(Command("admin"))
+@admin_required
+async def admin_cmd(message: Message):
+    await admin_panel(message)
 
 
 @router.callback_query(F.data == "admin_add")
@@ -76,3 +80,4 @@ async def admin_orders(callback: CallbackQuery):
         text += "─" * 15 + "\n"
 
     await callback.message.edit_text(text)
+    await callback.answer()

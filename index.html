@@ -23,7 +23,6 @@
             margin: 0 auto;
         }
 
-        /* Шапка */
         .header {
             background: white;
             border-radius: 24px;
@@ -44,7 +43,6 @@
             font-size: 16px;
         }
 
-        /* Навигация */
         .nav-menu {
             display: flex;
             gap: 12px;
@@ -71,7 +69,6 @@
             box-shadow: 0 8px 16px rgba(74, 111, 165, 0.2);
         }
 
-        /* Сетка товаров */
         .products-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -176,7 +173,6 @@
             box-shadow: 0 8px 16px rgba(74, 111, 165, 0.3);
         }
 
-        /* Корзина */
         .cart-page, .orders-page {
             display: none;
         }
@@ -252,7 +248,6 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.02);
         }
 
-        /* Геолокация */
         .location-section {
             margin-top: 20px;
         }
@@ -309,7 +304,6 @@
             margin-bottom: 20px;
         }
 
-        /* Заказы */
         .order-card {
             background: white;
             border-radius: 20px;
@@ -356,7 +350,6 @@
             font-size: 14px;
         }
 
-        /* Кнопка корзины */
         .cart-fab {
             position: fixed;
             bottom: 24px;
@@ -416,14 +409,12 @@
 </head>
 <body>
     <div class="container">
-        <!-- Навигация -->
         <div class="nav-menu">
             <button class="nav-btn active" onclick="showPage('main')">🍦 Меню</button>
             <button class="nav-btn" onclick="showPage('cart')">🛒 Корзина</button>
             <button class="nav-btn" onclick="showPage('orders')">📋 Заказы</button>
         </div>
 
-        <!-- Главная страница -->
         <div id="mainPage">
             <div class="header">
                 <h1>🍦 Мороженко</h1>
@@ -434,7 +425,6 @@
             </div>
         </div>
 
-        <!-- Страница корзины -->
         <div id="cartPage" style="display:none;">
             <div class="header">
                 <h1>🛒 Корзина</h1>
@@ -459,7 +449,6 @@
             </div>
         </div>
 
-        <!-- Страница заказов -->
         <div id="ordersPage" style="display:none;">
             <div class="header">
                 <h1>📋 Мои заказы</h1>
@@ -468,7 +457,6 @@
         </div>
     </div>
 
-    <!-- Кнопка корзины -->
     <button class="cart-fab" onclick="showPage('cart')">
         🛒
         <span id="cartCount" class="cart-count">0</span>
@@ -476,54 +464,60 @@
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // Инициализация Telegram
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.MainButton.hide();
 
+        console.log("✅ Mini App запущен");
+        console.log("🤖 Telegram Web App:", !!tg);
+
         let products = [];
         let cart = [];
 
-        // ============== ОТПРАВКА ДАННЫХ В БОТА ==============
-        async function sendToBot(action, data = {}) {
+        function sendToBot(action, data = {}) {
             const payload = JSON.stringify({action, ...data});
+            console.log("📤 Отправка:", payload);
             tg.sendData(payload);
         }
 
-        // ============== ЗАГРУЗКА ТОВАРОВ ==============
-        async function loadProducts() {
-            sendToBot('get_products');
-        }
+        tg.onEvent('webAppData', (event) => {
+            console.log("📥 Получено:", event.data);
 
-        // ============== ЗАГРУЗКА КОРЗИНЫ ==============
-        async function loadCart() {
-            sendToBot('get_cart');
-        }
+            try {
+                const data = JSON.parse(event.data);
 
-        // ============== ЗАГРУЗКА ЗАКАЗОВ ==============
-        async function loadOrders() {
-            sendToBot('get_orders');
-        }
-
-        // ============== ОБРАБОТКА ОТВЕТОВ ==============
-        tg.onEvent('webAppData', async (event) => {
-            const data = JSON.parse(event.data);
-
-            if (Array.isArray(data)) {
-                if (data[0]?.name) {
-                    products = data;
-                    renderProducts();
-                } else if (data[0]?.id) {
-                    renderOrders(data);
+                if (Array.isArray(data)) {
+                    if (data[0]?.name) {
+                        products = data;
+                        renderProducts();
+                    } else if (data[0]?.id) {
+                        renderOrders(data);
+                    }
+                } else if (data.items) {
+                    cart = data.items;
+                    renderCart();
+                    updateCartCount();
                 }
-            } else if (data.items) {
-                cart = data.items;
-                renderCart();
-                updateCartCount();
+            } catch (e) {
+                console.error("❌ Ошибка:", e);
             }
         });
 
-        // ============== ОТОБРАЖЕНИЕ ТОВАРОВ ==============
+        function loadProducts() {
+            console.log("🔄 Запрос товаров...");
+            sendToBot('get_products');
+        }
+
+        function loadCart() {
+            console.log("🔄 Запрос корзины...");
+            sendToBot('get_cart');
+        }
+
+        function loadOrders() {
+            console.log("🔄 Запрос заказов...");
+            sendToBot('get_orders');
+        }
+
         function renderProducts() {
             const container = document.getElementById('products');
 
@@ -553,7 +547,6 @@
             `).join('');
         }
 
-        // ============== УПРАВЛЕНИЕ КОЛИЧЕСТВОМ ==============
         function increaseQty(id) {
             const el = document.getElementById(`qty_${id}`);
             const product = products.find(p => p.id === id);
@@ -571,7 +564,6 @@
             }
         }
 
-        // ============== ДОБАВЛЕНИЕ В КОРЗИНУ ==============
         function addToCart(productId) {
             const qty = parseInt(document.getElementById(`qty_${productId}`).innerText);
             sendToBot('add_to_cart', {product_id: productId, quantity: qty});
@@ -579,7 +571,6 @@
             setTimeout(() => loadCart(), 500);
         }
 
-        // ============== ОТОБРАЖЕНИЕ КОРЗИНЫ ==============
         function renderCart() {
             const container = document.getElementById('cartItems');
 
@@ -613,19 +604,16 @@
             document.getElementById('cartTotal').innerText = `${total} ₽`;
         }
 
-        // ============== ОБНОВЛЕНИЕ КОРЗИНЫ ==============
         function updateCart(productId, change) {
             sendToBot('update_cart', {product_id: productId, change: change});
             setTimeout(() => loadCart(), 200);
         }
 
-        // ============== СЧЕТЧИК КОРЗИНЫ ==============
         function updateCartCount() {
             const count = cart.reduce((sum, item) => sum + item.quantity, 0);
             document.getElementById('cartCount').innerText = count;
         }
 
-        // ============== ГЕОЛОКАЦИЯ ==============
         function getLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -639,7 +627,6 @@
                             );
                             const data = await response.json();
                             const address = data.display_name || `${lat}, ${lon}`;
-
                             document.getElementById('location').value = address;
                             tg.showAlert(`📍 Адрес: ${address.slice(0, 50)}...`);
                         } catch (error) {
@@ -656,7 +643,6 @@
             }
         }
 
-        // ============== ОФОРМЛЕНИЕ ЗАКАЗА ==============
         function checkout() {
             const location = document.getElementById('location').value;
 
@@ -675,7 +661,6 @@
             }, 1000);
         }
 
-        // ============== ОТОБРАЖЕНИЕ ЗАКАЗОВ ==============
         function renderOrders(orders) {
             const container = document.getElementById('orders');
 
@@ -712,7 +697,6 @@
             }).join('');
         }
 
-        // ============== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ==============
         function showPage(page) {
             const mainPage = document.getElementById('mainPage');
             const cartPage = document.getElementById('cartPage');
@@ -739,10 +723,12 @@
             }
         }
 
-        // ============== ЗАГРУЗКА ПРИ СТАРТЕ ==============
         window.onload = () => {
-            loadProducts();
-            loadCart();
+            console.log("🚀 Страница загружена");
+            setTimeout(() => {
+                loadProducts();
+                loadCart();
+            }, 500);
         };
     </script>
 </body>
