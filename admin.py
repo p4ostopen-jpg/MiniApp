@@ -4,6 +4,9 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import ADMIN_IDS, SELLER_ID
 from database import Database
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 db = Database()
@@ -14,10 +17,12 @@ def admin_required(func):
         user_id = event.from_user.id
         if user_id not in ADMIN_IDS:
             if isinstance(event, Message):
-                await event.answer("❌ Нет доступа")
+                await event.answer("❌ У вас нет прав администратора")
             elif isinstance(event, CallbackQuery):
                 await event.answer("❌ Нет доступа", show_alert=True)
+            logger.warning(f"Попытка доступа к админке от пользователя {user_id}")
             return
+        logger.info(f"Админ {user_id} выполнил {func.__name__}")
         return await func(event, *args, **kwargs)
 
     return wrapper
@@ -36,8 +41,11 @@ async def admin_cmd(message: Message):
     builder.adjust(1)
 
     await message.answer(
-        "👨‍💼 ПАНЕЛЬ АДМИНИСТРАТОРА\n"
-        "Выберите действие:",
+        f"👨‍💼 ПАНЕЛЬ АДМИНИСТРАТОРА\n"
+        f"ID: {message.from_user.id}\n"
+        f"Имя: {message.from_user.full_name}\n"
+        f"Статус: ✅ Активен\n\n"
+        f"Выберите действие:",
         reply_markup=builder.as_markup()
     )
 
@@ -137,10 +145,12 @@ async def admin_confirm_order(callback: CallbackQuery):
                 order['user_id'],
                 f"✅ Ваш заказ #{order_id} ПОДТВЕРЖДЁН!\n\n"
                 f"📍 Адрес доставки: {order['location']}\n"
-                f"💰 Сумма: {order['total']}₽"
+                f"💰 Сумма: {order['total']}₽\n\n"
+                f"Спасибо за заказ! ❤️"
             )
+            logger.info(f"Уведомление отправлено пользователю {order['user_id']}")
         except Exception as e:
-            f"❌ Не удалось отправить уведомление: {e}"
+            logger.error(f"❌ Не удалось отправить уведомление: {e}")
 
     await callback.message.edit_text(f"✅ Заказ #{order_id} подтверждён")
     await callback.answer()
@@ -185,8 +195,9 @@ async def admin_cancel_order(callback: CallbackQuery):
                 f"❌ Ваш заказ #{order_id} ОТМЕНЁН.\n\n"
                 f"По вопросам обращайтесь к администратору."
             )
+            logger.info(f"Уведомление об отмене отправлено пользователю {order['user_id']}")
         except Exception as e:
-            f"❌ Не удалось отправить уведомление: {e}"
+            logger.error(f"❌ Не удалось отправить уведомление: {e}")
 
     await callback.message.edit_text(f"❌ Заказ #{order_id} отменён")
     await callback.answer()
@@ -231,8 +242,28 @@ async def admin_restore_order(callback: CallbackQuery):
                 f"🔄 Ваш заказ #{order_id} ВОССТАНОВЛЕН!\n\n"
                 f"Статус: ожидает подтверждения"
             )
+            logger.info(f"Уведомление о восстановлении отправлено пользователю {order['user_id']}")
         except Exception as e:
-            f"❌ Не удалось отправить уведомление: {e}"
+            logger.error(f"❌ Не удалось отправить уведомление: {e}")
 
     await callback.message.edit_text(f"🔄 Заказ #{order_id} восстановлен")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_products")
+@admin_required
+async def admin_products(callback: CallbackQuery):
+    products = await db.get_products()
+
+    if not products:
+        await callback.message.edit_text("📦 Нет товаров")
+        await callback.answer()
+        return
+
+    text = "📦 ТОВАРЫ В НАЛИЧИИ:\n\n"
+    for p in products:
+        text += f"🆔 {p['id']}: {p['name']}\n"
+        text += f"   💰 {p['price']}₽ | 📦 {p['quantity']} шт.\n\n"
+
+    await callback.message.edit_text(text)
     await callback.answer()
