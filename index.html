@@ -819,7 +819,7 @@
                 <h1>🛒 Корзина</h1>
             </div>
             <div id="cartItems"></div>
-            <div id="cartTotal" class="cart-total">0 ₽</div>
+            <div id="cartTotal" class="cart-total">0 €</div>
 
             <div class="location-section">
                 <!-- Блок запроса разрешения на геолокацию -->
@@ -992,13 +992,51 @@
         console.log('Is admin:', currentUser.is_admin);
         console.log('Admin IDs:', ADMIN_IDS);
 
-        // Каталог товаров
+        // Базовый URL для картинок
+        const IMAGE_BASE_URL = "https://p4ostopen-jpg.github.io/MiniApp/";
+
+        // Каталог товаров с реальными картинками
         let catalog = [
-            { id: 1, name: "Ванильное", price: 100, stock: 50, image: "🍦" },
-            { id: 2, name: "Шоколадное", price: 120, stock: 40, image: "🍫" },
-            { id: 3, name: "Клубничное", price: 110, stock: 30, image: "🍓" },
-            { id: 4, name: "Фисташковое", price: 150, stock: 25, image: "🌰" },
-            { id: 5, name: "Карамельное", price: 130, stock: 35, image: "🍯" }
+            {
+                id: 1,
+                name: "Ванильное",
+                price: 100,
+                stock: 50,
+                image: "🍦",
+                image_url: IMAGE_BASE_URL + "vanilla.png"
+            },
+            {
+                id: 2,
+                name: "Шоколадное",
+                price: 120,
+                stock: 40,
+                image: "🍫",
+                image_url: IMAGE_BASE_URL + "chocolate.png"
+            },
+            {
+                id: 3,
+                name: "Клубничное",
+                price: 110,
+                stock: 30,
+                image: "🍓",
+                image_url: IMAGE_BASE_URL + "strawberry.png"
+            },
+            {
+                id: 4,
+                name: "Фисташковое",
+                price: 150,
+                stock: 25,
+                image: "🌰",
+                image_url: IMAGE_BASE_URL + "pistachio.png"
+            },
+            {
+                id: 5,
+                name: "Карамельное",
+                price: 130,
+                stock: 35,
+                image: "🍯",
+                image_url: IMAGE_BASE_URL + "caramel.png"
+            }
         ];
 
         // Корзина пользователя
@@ -1206,29 +1244,32 @@
                 const isAvailable = product.stock > 0;
 
                 return `
-                    <div class="product-card">
-                        <div class="product-image">
-                            ${product.image || '🍦'}
+                <div class="product-card">
+                <div class="product-image">
+                    <img src="${product.image_url}"
+                         alt="${product.name}"
+                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 16px;"
+                         onerror="this.style.display='none'; this.parentElement.innerHTML='${product.image}';">
+                </div>
+                <div class="product-name">${product.name}</div>
+                <div class="product-price">${product.price} ₽</div>
+                <div class="product-stock">
+                    ${isAvailable ? `✅ В наличии: ${product.stock} шт.` : '❌ Нет в наличии'}
+                </div>
+                ${isAvailable ? `
+                    <div class="product-actions">
+                        <div class="qty-selector">
+                            <button class="qty-btn" onclick="decreaseQty(${product.id})">−</button>
+                            <span id="qty_${product.id}" class="quantity">1</span>
+                            <button class="qty-btn" onclick="increaseQty(${product.id})">+</button>
                         </div>
-                        <div class="product-name">${product.name}</div>
-                        <div class="product-price">${product.price} ₽</div>
-                        <div class="product-stock">
-                            ${isAvailable ? `✅ В наличии: ${product.stock} шт.` : '❌ Нет в наличии'}
-                        </div>
-                        ${isAvailable ? `
-                            <div class="product-actions">
-                                <div class="qty-selector">
-                                    <button class="qty-btn" onclick="decreaseQty(${product.id})">−</button>
-                                    <span id="qty_${product.id}" class="quantity">1</span>
-                                    <button class="qty-btn" onclick="increaseQty(${product.id})">+</button>
-                                </div>
-                                <button class="add-btn" onclick="addToCart(${product.id})">➕</button>
-                            </div>
-                        ` : `
-                            <button class="add-btn disabled" disabled>Нет в наличии</button>
-                        `}
+                        <button class="add-btn" onclick="addToCart(${product.id})">➕</button>
                     </div>
-                `;
+                ` : `
+                    <button class="add-btn disabled" disabled>Нет в наличии</button>
+                `}
+            </div>
+        `;
             }).join('');
         }
 
@@ -1278,7 +1319,7 @@
 
             if (cart.length === 0) {
                 container.innerHTML = '<div class="empty-state">🛒 Корзина пуста</div>';
-                document.getElementById('cartTotal').innerText = '0 ₽';
+                document.getElementById('cartTotal').innerText = '0 €';
                 return;
             }
 
@@ -1289,7 +1330,7 @@
                     <div class="cart-item">
                         <div class="cart-item-info">
                             <h4>${item.name}</h4>
-                            <div class="cart-item-price">${item.price} ₽</div>
+                            <div class="cart-item-price">${item.price} €</div>
                         </div>
                         <div class="cart-item-controls">
                             <div class="cart-qty">
@@ -1303,7 +1344,7 @@
                 `;
             }).join('');
 
-            document.getElementById('cartTotal').innerText = `${total} ₽`;
+            document.getElementById('cartTotal').innerText = `${total} €`;
         }
 
         function updateCart(productId, change) {
@@ -1436,15 +1477,15 @@
                                 <div class="order-item">
                                     <span class="order-item-name">${item.name}</span>
                                     <div class="order-item-details">
-                                        <span>${item.quantity} × ${item.price} ₽</span>
-                                        <span class="order-item-price">${item.total} ₽</span>
+                                        <span>${item.quantity} × ${item.price} €</span>
+                                        <span class="order-item-price">${item.total} €</span>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
 
                         <div class="order-total">
-                            Итого: ${order.total} ₽
+                            Итого: ${order.total} €
                         </div>
                     </div>
                 `;
@@ -1485,7 +1526,7 @@
             document.getElementById('pendingOrdersCount').innerText = pendingOrders;
             document.getElementById('totalProductsCount').innerText = catalog.length;
             document.getElementById('todayOrdersCount').innerText = todayOrders;
-            document.getElementById('totalRevenue').innerText = totalRevenue + ' ₽';
+            document.getElementById('totalRevenue').innerText = totalRevenue + ' €';
         }
 
         function renderAdminProducts() {
@@ -1495,7 +1536,7 @@
                 <div class="product-list-item">
                     <div class="product-list-info">
                         <h4>${product.name} ${product.image || '🍦'}</h4>
-                        <span>${product.price} ₽ • Остаток: ${product.stock} шт.</span>
+                        <span>${product.price} € • Остаток: ${product.stock} шт.</span>
                     </div>
                     <div class="product-list-actions">
                         <button class="product-list-btn edit" onclick="showEditProductModal(${product.id})">
@@ -1547,15 +1588,15 @@
                                 <div class="order-item">
                                     <span class="order-item-name">${item.name}</span>
                                     <div class="order-item-details">
-                                        <span>${item.quantity} × ${item.price} ₽</span>
-                                        <span class="order-item-price">${item.total} ₽</span>
+                                        <span>${item.quantity} × ${item.price} €</span>
+                                        <span class="order-item-price">${item.total} €</span>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
 
                         <div class="order-total">
-                            Итого: ${order.total} ₽
+                            Итого: ${order.total} €
                         </div>
 
                         <div class="order-actions">
