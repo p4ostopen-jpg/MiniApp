@@ -3,43 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍦 Магазин Жи Ши</title>
+    <title>🍦 Магазин Жи Ши отдуши</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         body { background: linear-gradient(145deg, #f6f9fc 0%, #e6f0f5 100%); min-height: 100vh; padding: 16px; }
         .container { max-width: 600px; margin: 0 auto; }
         .header { background: white; border-radius: 24px; padding: 24px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); text-align: center; }
+        .header h1 { color: #1a2639; margin-bottom: 8px; font-size: 32px; }
+        .header p { color: #6b7b8c; font-size: 16px; }
         .nav-menu { display: flex; gap: 12px; margin-bottom: 20px; }
-        .nav-btn { flex: 1; background: white; border: none; padding: 14px; border-radius: 20px; color: #4a6fa5; font-weight: 600; cursor: pointer; }
-        .nav-btn.active { background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; }
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-        .product-card { background: white; border-radius: 24px; padding: 20px; }
-        .product-image { width: 100%; height: 200px; object-fit: cover; border-radius: 16px; background: #f8fafc; }
-        .product-name { font-size: 20px; font-weight: 700; color: #1a2639; }
-        .product-price { font-size: 28px; font-weight: 800; color: #4a6fa5; }
-        .product-stock { color: #6b7c8c; font-size: 14px; margin-bottom: 16px; }
-        .product-id { font-size: 12px; color: #999; margin-bottom: 8px; }
+        .nav-btn { flex: 1; background: white; border: none; padding: 14px; border-radius: 20px; color: #4a6fa5; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .nav-btn.active { background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; box-shadow: 0 8px 16px rgba(74, 111, 165, 0.2); }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .product-card { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.5); }
+        .product-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(74, 111, 165, 0.1); }
+        .product-image { width: 100%; height: 200px; object-fit: cover; border-radius: 16px; margin-bottom: 16px; background: #f8fafc; }
+        .product-name { font-size: 20px; font-weight: 700; color: #1a2639; margin-bottom: 8px; }
+        .product-price { font-size: 28px; font-weight: 800; color: #4a6fa5; margin-bottom: 12px; }
+        .product-stock { color: #6b7b8c; font-size: 14px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #eef2f5; }
         .quantity-control { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border-radius: 16px; padding: 4px; margin-bottom: 16px; }
-        .qty-btn { width: 44px; height: 44px; border: none; background: white; border-radius: 12px; font-size: 20px; cursor: pointer; color: #4a6fa5; }
-        .quantity { font-size: 18px; font-weight: 600; }
-        .add-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 600; cursor: pointer; }
-        .cart-item { background: white; border-radius: 20px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .cart-total { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; text-align: right; font-size: 22px; font-weight: 700; }
-        .location-input { width: 100%; padding: 16px; border: 2px solid #eef2f5; border-radius: 16px; font-size: 15px; margin-bottom: 15px; }
+        .qty-btn { width: 44px; height: 44px; border: none; background: white; border-radius: 12px; font-size: 20px; font-weight: 600; color: #4a6fa5; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+        .qty-btn:hover { background: #4a6fa5; color: white; }
+        .quantity { font-size: 18px; font-weight: 600; color: #1a2639; }
+        .add-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .add-btn:hover { transform: scale(0.98); box-shadow: 0 8px 16px rgba(74, 111, 165, 0.3); }
+        .cart-page, .orders-page { display: none; }
+        .cart-item { background: white; border-radius: 20px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .cart-item-info h4 { color: #1a2639; margin-bottom: 6px; font-size: 16px; }
+        .cart-item-price { color: #4a6fa5; font-weight: 700; font-size: 16px; }
+        .cart-item-controls { display: flex; align-items: center; gap: 12px; }
+        .cart-qty { display: flex; align-items: center; gap: 12px; background: #f8fafc; padding: 6px 12px; border-radius: 20px; }
+        .cart-qty button { width: 32px; height: 32px; border: none; background: white; border-radius: 10px; font-size: 16px; cursor: pointer; color: #4a6fa5; font-weight: 600; }
+        .remove-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px; color: #ff6b6b; }
+        .cart-total { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; text-align: right; font-size: 22px; font-weight: 700; color: #1a2639; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .location-section { margin-top: 20px; }
+        .location-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
+        .location-btn { flex: 1; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); color: white; border: none; padding: 14px; border-radius: 16px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .location-btn:hover { transform: scale(0.98); box-shadow: 0 8px 16px rgba(74, 111, 165, 0.3); }
+        .location-input { width: 100%; padding: 16px; border: 2px solid #eef2f5; border-radius: 16px; font-size: 15px; transition: border 0.2s; margin-bottom: 15px; }
+        .location-input:focus { border-color: #4a6fa5; outline: none; }
         .location-input.error { border-color: #ff6b6b; animation: shake 0.5s; }
         @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-        .checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #51c585 0%, #3aa36a 100%); color: white; border: none; border-radius: 16px; font-size: 18px; font-weight: 600; cursor: pointer; }
-        .cart-fab { position: fixed; bottom: 24px; right: 24px; width: 64px; height: 64px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); border-radius: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; cursor: pointer; border: none; }
-        .cart-count { position: absolute; top: -6px; right: -6px; background: #ff6b6b; color: white; border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
+        .checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #51c585 0%, #3aa36a 100%); color: white; border: none; border-radius: 16px; font-size: 18px; font-weight: 600; cursor: pointer; margin-bottom: 20px; }
+        .order-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .order-header { display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eef2f5; }
+        .order-id { font-weight: 700; color: #4a6fa5; }
+        .order-status { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-pending { background: #fff4e0; color: #c47a2d; }
+        .status-completed { background: #e1f7e1; color: #2d7a4b; }
+        .order-items { background: #f8fafc; padding: 12px; border-radius: 12px; margin: 12px 0; font-size: 14px; }
+        .cart-fab { position: fixed; bottom: 24px; right: 24px; width: 64px; height: 64px; background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); border-radius: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3); cursor: pointer; border: none; transition: transform 0.2s; }
+        .cart-fab:hover { transform: scale(1.1); }
+        .cart-count { position: absolute; top: -6px; right: -6px; background: #ff6b6b; color: white; border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3); }
         .empty-state { text-align: center; padding: 48px 20px; color: #6b7b8c; background: white; border-radius: 24px; }
+        .loading { text-align: center; padding: 40px; color: #4a6fa5; }
+        .or-divider { color: #6b7b8c; align-self: center; font-size: 14px; }
         .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; z-index: 1000; animation: fadeInOut 2s ease; }
         @keyframes fadeInOut { 0% { opacity: 0; bottom: 80px; } 15% { opacity: 1; bottom: 100px; } 85% { opacity: 1; bottom: 100px; } 100% { opacity: 0; bottom: 80px; } }
-        .debug-panel { position: fixed; bottom: 100px; left: 16px; background: rgba(0,0,0,0.8); color: white; padding: 12px; border-radius: 12px; font-size: 12px; z-index: 1001; }
+        .debug-panel { position: fixed; bottom: 100px; left: 16px; background: rgba(0,0,0,0.8); color: white; padding: 12px; border-radius: 12px; font-size: 12px; max-width: 200px; display: none; z-index: 1001; }
     </style>
 </head>
 <body>
     <div class="debug-panel" id="debugPanel">
-        <div>🔄 Статус: <span id="debugStatus">Загрузка...</span></div>
+        <div>🔄 Статус: <span id="debugStatus">Инициализация...</span></div>
         <div>📦 Товаров: <span id="debugProducts">0</span></div>
         <div>🛒 Корзина: <span id="debugCart">0</span></div>
     </div>
@@ -54,7 +80,7 @@
         <div id="mainPage">
             <div class="header">
                 <h1>🍦 Жи Ши</h1>
-                <p>Свежее мороженое каждый день</p>
+                <p>Свежее и вкусное Жи Ши каждый день</p>
             </div>
             <div id="products" class="products-grid"></div>
         </div>
@@ -65,7 +91,12 @@
             </div>
             <div id="cartItems"></div>
             <div id="cartTotal" class="cart-total">0 ₽</div>
-            <div style="margin-top: 20px;">
+
+            <div class="location-section">
+                <div class="location-buttons">
+                    <button onclick="getLocation()" class="location-btn">📍 Отправить геолокацию</button>
+                    <span class="or-divider">или</span>
+                </div>
                 <input type="text" id="location" class="location-input" placeholder="✏️ Введите адрес доставки">
                 <button class="checkout-btn" onclick="checkout()">✅ Оформить заказ</button>
             </div>
@@ -88,13 +119,12 @@
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // Инициализация Telegram Web App
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
         tg.MainButton.hide();
 
-        // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
+        // ========== ДАННЫЕ ==========
         let products = [
             { id: 1, name: "Ванильное", price: 100, stock: 50, image_url: "https://p4ostopen-jpg.github.io/MiniApp/vanilla.jpg" },
             { id: 2, name: "Шоколадное", price: 120, stock: 40, image_url: "https://p4ostopen-jpg.github.io/MiniApp/chocolate.jpg" },
@@ -105,7 +135,21 @@
 
         let cart = [];
 
-        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+        // ========== ОТЛАДКА ==========
+        function updateDebugInfo() {
+            document.getElementById('debugStatus').innerText = 'Активен';
+            document.getElementById('debugProducts').innerText = products.length;
+            document.getElementById('debugCart').innerText = cart.reduce((sum, i) => sum + i.quantity, 0);
+        }
+
+        function logToConsole(type, message, data = null) {
+            const ts = new Date().toLocaleTimeString();
+            const msg = `[${ts}] ${message}`;
+            if (type === 'error') console.error(`❌ ${msg}`, data || '');
+            else if (type === 'success') console.log(`✅ ${msg}`, data || '');
+            else console.log(`📌 ${msg}`, data || '');
+        }
+
         function showToast(text, isError = false) {
             const toast = document.getElementById('toast');
             toast.style.display = 'block';
@@ -114,13 +158,23 @@
             setTimeout(() => toast.style.display = 'none', 2000);
         }
 
-        function updateDebugInfo() {
-            document.getElementById('debugStatus').innerText = 'Активен';
-            document.getElementById('debugProducts').innerText = products.length;
-            document.getElementById('debugCart').innerText = cart.reduce((sum, i) => sum + i.quantity, 0);
+        // ========== ОТПРАВКА В БОТ (только заказ) ==========
+        function sendToBot(action, data = {}) {
+            try {
+                tg.sendData(JSON.stringify({action, ...data}));
+                showToast(`📤 ${action}`);
+            } catch (e) {
+                console.error(e);
+            }
         }
 
-        // ========== ФУНКЦИИ ДЛЯ ТОВАРОВ ==========
+        // ========== ТОВАРЫ ==========
+        function loadProducts() {
+            renderProducts();
+            showToast(`✅ Загружено ${products.length} товаров`);
+            updateDebugInfo();
+        }
+
         function renderProducts() {
             const container = document.getElementById('products');
             container.innerHTML = products.map(p => `
@@ -129,7 +183,6 @@
                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><rect width=%22300%22 height=%22200%22 fill=%22%23f8fafc%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%2248%22 text-anchor=%22middle%22 dy=%22.3em%22>🍦</text></svg>'">
                     <div class="product-name">${p.name}</div>
                     <div class="product-price">${p.price} ₽</div>
-                    <div class="product-id">🆔 ID: ${p.id}</div>
                     <div class="product-stock">В наличии: ${p.stock} шт.</div>
                     <div class="quantity-control">
                         <button class="qty-btn" onclick="decreaseQty(${p.id})">−</button>
@@ -154,22 +207,14 @@
             if (qty > 1) el.innerText = qty - 1;
         }
 
-        // ========== ФУНКЦИИ ДЛЯ КОРЗИНЫ ==========
+        // ========== КОРЗИНА (локальная) ==========
         function addToCart(productId) {
             const qty = parseInt(document.getElementById(`qty_${productId}`).innerText);
             const product = products.find(p => p.id === productId);
 
             const existing = cart.find(i => i.id === productId);
-            if (existing) {
-                existing.quantity += qty;
-            } else {
-                cart.push({
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    quantity: qty
-                });
-            }
+            if (existing) existing.quantity += qty;
+            else cart.push({...product, quantity: qty});
 
             renderCart();
             updateCartCount();
@@ -189,18 +234,17 @@
                 total += item.price * item.quantity;
                 return `
                     <div class="cart-item">
-                        <div>
+                        <div class="cart-item-info">
                             <h4>${item.name}</h4>
-                            <div style="color: #4a6fa5; font-weight: 700;">${item.price} ₽</div>
-                            <div style="font-size: 12px; color: #999;">ID: ${item.id}</div>
+                            <div class="cart-item-price">${item.price} ₽</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 12px; border-radius: 20px;">
-                                <button onclick="updateCart(${item.id}, -1)" style="width: 32px; height: 32px; border: none; background: white; border-radius: 10px; cursor: pointer;">−</button>
-                                <span style="font-weight: 600;">${item.quantity}</span>
-                                <button onclick="updateCart(${item.id}, 1)" style="width: 32px; height: 32px; border: none; background: white; border-radius: 10px; cursor: pointer;">+</button>
+                        <div class="cart-item-controls">
+                            <div class="cart-qty">
+                                <button onclick="updateCart(${item.id}, -1)">−</button>
+                                <span>${item.quantity}</span>
+                                <button onclick="updateCart(${item.id}, 1)">+</button>
                             </div>
-                            <button onclick="updateCart(${item.id}, -1000)" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #ff6b6b;">🗑️</button>
+                            <button class="remove-btn" onclick="updateCart(${item.id}, -1000)">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -212,12 +256,8 @@
         function updateCart(productId, change) {
             const item = cart.find(i => i.id === productId);
             if (!item) return;
-
             item.quantity += change;
-            if (item.quantity <= 0) {
-                cart = cart.filter(i => i.id !== productId);
-            }
-
+            if (item.quantity <= 0) cart = cart.filter(i => i.id !== productId);
             renderCart();
             updateCartCount();
         }
@@ -227,10 +267,14 @@
             document.getElementById('cartCount').innerText = count;
         }
 
-        // ========== ОФОРМЛЕНИЕ ЗАКАЗА ==========
+        function loadCart() {
+            renderCart();
+            updateCartCount();
+        }
+
+        // ========== ОФОРМЛЕНИЕ ==========
         function checkout() {
             const location = document.getElementById('location').value.trim();
-
             if (!location) {
                 document.getElementById('location').classList.add('error');
                 showToast('📍 Укажите адрес доставки!', true);
@@ -238,45 +282,39 @@
                 return;
             }
 
-            if (cart.length === 0) {
-                showToast('🛒 Корзина пуста!', true);
-                return;
-            }
-
-            // Подготавливаем данные заказа
-            const orderItems = cart.map(item => ({
-                id: item.id,
-                quantity: item.quantity
-            }));
-
-            const orderData = {
-                action: 'create_order',
+            sendToBot('create_order', {
                 location: location,
-                items: orderItems
-            };
+                items: cart.map(i => ({id: i.id, quantity: i.quantity}))
+            });
 
-            console.log('📤 Отправка заказа:', JSON.stringify(orderData, null, 2));
-
-            // Отправляем данные в бота
-            tg.sendData(JSON.stringify(orderData));
-
-            showToast('✅ Заказ отправлен! Ожидайте подтверждения');
-
-            // Очищаем корзину
+            showToast('✅ Заказ отправлен боту!');
             cart = [];
             renderCart();
             updateCartCount();
-
-            // Переходим на страницу заказов
-            setTimeout(() => showPage('orders'), 1000);
+            showPage('orders');
         }
 
-        // ========== ЗАКАЗЫ ==========
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`);
+                        const data = await res.json();
+                        document.getElementById('location').value = data.display_name || `${lat}, ${lon}`;
+                    } catch {
+                        document.getElementById('location').value = `${lat}, ${lon}`;
+                    }
+                    showToast('📍 Адрес получен');
+                });
+            }
+        }
+
         function loadOrders() {
-            document.getElementById('orders').innerHTML = '<div class="empty-state">📋 Ваши заказы появятся здесь</div>';
+            document.getElementById('orders').innerHTML = '<div class="empty-state">📋 Заказы хранятся в боте</div>';
         }
 
-        // ========== НАВИГАЦИЯ ==========
         function showPage(page) {
             document.getElementById('mainPage').style.display = 'none';
             document.getElementById('cartPage').style.display = 'none';
@@ -287,11 +325,11 @@
             if (page === 'main') {
                 document.getElementById('mainPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[0].classList.add('active');
-                renderProducts();
+                loadProducts();
             } else if (page === 'cart') {
                 document.getElementById('cartPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[1].classList.add('active');
-                renderCart();
+                loadCart();
             } else if (page === 'orders') {
                 document.getElementById('ordersPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[2].classList.add('active');
@@ -299,21 +337,21 @@
             }
         }
 
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        // ========== ЗАПУСК ==========
         window.addEventListener('load', () => {
-            console.log('🚀 Mini App загружен');
             document.getElementById('debugPanel').style.display = 'block';
+            logToConsole('success', '🚀 Mini App загружен');
             showPage('main');
-            updateDebugInfo();
         });
 
-        // Экспорт функций в глобальную область
         window.showPage = showPage;
         window.increaseQty = increaseQty;
         window.decreaseQty = decreaseQty;
         window.addToCart = addToCart;
         window.updateCart = updateCart;
+        window.getLocation = getLocation;
         window.checkout = checkout;
+        window.loadCart = loadCart;
         window.loadOrders = loadOrders;
     </script>
 </body>
