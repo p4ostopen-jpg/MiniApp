@@ -29,7 +29,6 @@ async def start(message: Message):
         message.from_user.first_name
     )
 
-    # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(
@@ -38,16 +37,15 @@ async def start(message: Message):
             )]
         ],
         resize_keyboard=True,
-        one_time_keyboard=True   # клавиатура исчезнет после нажатия
+        one_time_keyboard=True
     )
-    # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
 
     await message.answer(
         f"👋 Привет, {message.from_user.first_name}!\n"
         f"Нажми кнопку ниже, чтобы открыть магазин:",
         reply_markup=keyboard
     )
-
+    
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
     print("\n" + "=" * 50)
