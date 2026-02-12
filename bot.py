@@ -235,24 +235,34 @@ async def admin_shortcut(callback: CallbackQuery):
         await callback.answer("❌ Нет доступа", show_alert=True)
 
 
+# В функции main() замените блок добавления товаров:
+
 async def main():
     await db.create_tables()
 
-    # Добавляем тестовые товары
-    try:
-        product_ids = []
-        product_ids.append(await db.add_product("Ванильное", 100, 50))
-        product_ids.append(await db.add_product("Шоколадное", 120, 40))
-        product_ids.append(await db.add_product("Клубничное", 110, 30))
-        product_ids.append(await db.add_product("Фисташковое", 150, 25))
-        product_ids.append(await db.add_product("Карамельное", 130, 35))
-        logger.info(f"✅ Тестовые товары добавлены. ID: {product_ids}")
-    except Exception as e:
-        logger.info(f"📦 Товары уже существуют: {e}")
+    # Очищаем таблицу products перед добавлением
+    async with aiosqlite.connect('shop.db') as db_conn:
+        await db_conn.execute('DELETE FROM products')
+        await db_conn.commit()
 
-    logger.info("🤖 Бот запущен!")
-    await dp.start_polling(bot)
+    # Добавляем товары с фиксированными ID
+    async with aiosqlite.connect('shop.db') as db_conn:
+        products_data = [
+            (1, "Ванильное", 100, 50),
+            (2, "Шоколадное", 120, 40),
+            (3, "Клубничное", 110, 30),
+            (4, "Фисташковое", 150, 25),
+            (5, "Карамельное", 130, 35)
+        ]
 
+        for prod_id, name, price, qty in products_data:
+            await db_conn.execute('''
+                INSERT OR REPLACE INTO products (id, name, price, quantity, is_available)
+                VALUES (?, ?, ?, ?, 1)
+            ''', (prod_id, name, price, qty))
+
+        await db_conn.commit()
+        logger.info(f"✅ Товары добавлены с фиксированными ID 1-5")
 
 if __name__ == "__main__":
     asyncio.run(main())

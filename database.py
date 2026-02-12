@@ -170,9 +170,20 @@ class Database:
                 total = 0
                 order_items = []
 
-                print(f"📦 Получен запрос на создание заказа от user_id: {user_id}")
+                print(f"\n{'=' * 50}")
+                print(f"📦 СОЗДАНИЕ ЗАКАЗА")
+                print(f"👤 Пользователь: {user_id}")
                 print(f"📍 Адрес: {location}")
-                print(f"📋 Товары: {items}")
+                print(f"📋 Полученные товары: {items}")
+                print(f"{'=' * 50}\n")
+
+                # Показываем все товары в базе
+                cursor = await db.execute('SELECT id, name, price, quantity FROM products WHERE is_available = 1')
+                all_products = await cursor.fetchall()
+                print(f"📦 Товары в БД:")
+                for p in all_products:
+                    print(f"   ID: {p[0]}, {p[1]}, цена: {p[2]}, остаток: {p[3]}")
+                print()
 
                 # Проверяем наличие товаров
                 for item in items:
@@ -182,19 +193,14 @@ class Database:
                     print(f"🔍 Ищем товар с ID: {prod_id}")
 
                     cursor = await db.execute(
-                        'SELECT id, name, price, quantity FROM products WHERE is_available = 1',
-                    )
-                    all_products = await cursor.fetchall()
-                    print(f"📦 Все товары в БД: {all_products}")
-
-                    cursor = await db.execute(
                         'SELECT id, name, price, quantity FROM products WHERE id = ? AND is_available = 1',
                         (prod_id,)
                     )
                     row = await cursor.fetchone()
 
                     if not row:
-                        print(f"❌ Товар с id {prod_id} не найден в БД!")
+                        print(f"❌ ОШИБКА: Товар с id {prod_id} не найден в БД!")
+                        print(f"   Возможные ID в БД: {[p[0] for p in all_products]}")
                         continue
 
                     prod_id_db, name, price, stock = row
@@ -206,6 +212,7 @@ class Database:
 
                     total += price * qty
                     order_items.append((prod_id_db, name, qty, price))
+                    print(f"   + {name} x{qty} = {price * qty}₽")
 
                 if total == 0 or not order_items:
                     print("❌ Нет доступных товаров для заказа")
@@ -231,14 +238,17 @@ class Database:
                                      SET quantity = quantity - ?
                                      WHERE id = ?
                                      ''', (qty, prod_id_db))
-                    print(
-                        f"  • {name} x{qty} - {price * qty}₽ (остаток: {await self.get_product_stock(prod_id_db) - qty})")
+
+                    # Проверяем остаток
+                    cursor = await db.execute('SELECT quantity FROM products WHERE id = ?', (prod_id_db,))
+                    new_stock = await cursor.fetchone()
+                    print(f"   • {name} x{qty} - {price * qty}₽ (остаток: {new_stock[0]})")
 
                 # Очищаем корзину
                 await db.execute('DELETE FROM cart WHERE user_id = ?', (user_id,))
 
                 await db.commit()
-                print(f"🎉 Заказ #{order_id} успешно создан!")
+                print(f"🎉 Заказ #{order_id} успешно создан!\n")
                 return order_id
 
             except Exception as e:
@@ -328,16 +338,33 @@ class Database:
 
     async def add_product(self, name, price, quantity):
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute('''
-                INSERT OR REPLACE INTO products (name, price, quantity, is_available)
-                VALUES (?, ?, ?, 1)
-            ''', (name, price, quantity))
-            await db.commit()
-
-            # Получаем ID добавленного товара
+            # Сначала проверяем, существует ли уже такой товар
             cursor = await db.execute('SELECT id FROM products WHERE name = ?', (name,))
-            row = await cursor.fetchone()
-            return row[0] if row else None
+            existing = await cursor.fetchone()
+
+            if existing:
+                # Обновляем существующий товар
+                await db.execute('''
+                                 UPDATE products
+                                 SET price        = ?,
+                                     quantity     = ?,
+                                     is_available = 1
+                                 WHERE name = ?
+                                 ''', (price, quantity, name))
+                await db.commit()
+                return existing[0]
+            else:
+                # Получаем следующий ID (начинаем с 6, если 1-5 заняты)
+                cursor = await db.execute('SELECT MAX(id) FROM products')
+                max_id = await cursor.fetchone()
+                new_id = (max_id[0] or 5) + 1
+
+                await db.execute('''
+                                 INSERT INTO products (id, name, price, quantity, is_available)
+                                 VALUES (?, ?, ?, ?, 1)
+                                 ''', (new_id, name, price, quantity))
+                await db.commit()
+                return new_id
 
     async def delete_product(self, product_id):
         async with aiosqlite.connect(self.db_path) as db:
