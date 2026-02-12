@@ -49,6 +49,11 @@ async def start(message: Message):
 
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
+    # ⚠️ САМАЯ ВАЖНАЯ СТРОКА - ПРОВЕРЬ ЧТО ОНА ЕСТЬ!
+    print("\n" + "="*50)
+    print("🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ ОТ MINI APP!")
+    print(f"📦 Данные: {message.web_app_data.data}")
+    print("="*50 + "\n")
     logger.info(f"🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ: {message.web_app_data.data}")
     try:
         data = json.loads(message.web_app_data.data)
