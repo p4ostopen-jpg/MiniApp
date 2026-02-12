@@ -188,6 +188,16 @@ class Database:
             ''', (order_id,))
             return await cursor.fetchall()
 
+    async def get_all_orders(self):
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute('''
+                                      SELECT *
+                                      FROM orders
+                                      ORDER BY created_at DESC
+                                      ''')
+            return await cursor.fetchall()
+
     async def add_product(self, name, price, quantity):
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute('''

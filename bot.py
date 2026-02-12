@@ -17,8 +17,8 @@ db = Database()
 
 dp.include_router(admin_router)
 
+# ⚠️ ПРОВЕРЬ ЧТО ЭТА ССЫЛКА ТОЧНАЯ!
 WEBAPP_URL = "https://p4ostopen-jpg.github.io/MiniApp/"
-
 
 @dp.message(CommandStart())
 async def start(message: Message):
@@ -47,7 +47,6 @@ async def start(message: Message):
         reply_markup=keyboard
     )
 
-
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
     try:
@@ -59,7 +58,7 @@ async def web_app_handler(message: Message):
 
         if action == 'get_products':
             products = await db.get_products()
-            await message.answer(json.dumps(products, ensure_ascii=False, default=str))
+            await message.answer(json.dumps(products, ensure_ascii=False))
 
         elif action == 'get_cart':
             cart = await db.get_cart(user_id)
@@ -101,7 +100,7 @@ async def web_app_handler(message: Message):
                 )
                 await message.answer(json.dumps({'order_id': order_id}))
             else:
-                await message.answer(json.dumps({'error': 'Ошибка заказа'}))
+                await message.answer(json.dumps({'error': 'Корзина пуста'}))
 
         elif action == 'get_orders':
             orders = await db.get_user_orders(user_id)
@@ -129,7 +128,6 @@ async def web_app_handler(message: Message):
         logger.error(f"Mini App error: {e}")
         await message.answer(json.dumps({'error': str(e)}))
 
-
 @dp.callback_query(F.data == "my_orders")
 async def my_orders(callback: CallbackQuery):
     orders = await db.get_user_orders(callback.from_user.id)
@@ -150,14 +148,12 @@ async def my_orders(callback: CallbackQuery):
     await callback.message.answer(text)
     await callback.answer()
 
-
 @dp.callback_query(F.data == "admin_panel")
 async def admin_shortcut(callback: CallbackQuery):
     if callback.from_user.id in ADMIN_IDS:
         await admin_panel(callback.message)
     else:
         await callback.answer("❌ Нет доступа", show_alert=True)
-
 
 async def main():
     await db.create_tables()
@@ -174,7 +170,6 @@ async def main():
 
     logger.info("🤖 Бот запущен!")
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
