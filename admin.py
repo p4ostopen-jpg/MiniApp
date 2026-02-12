@@ -23,14 +23,14 @@ def admin_required(func):
     return wrapper
 
 
-async def admin_panel(message: Message):
+@router.message(Command("admin"))
+@admin_required
+async def admin_cmd(message: Message):
     builder = InlineKeyboardBuilder()
-    builder.button(text="➕ Добавить товар", callback_data="admin_add")
-    builder.button(text="📦 Обновить остатки", callback_data="admin_update")
-    builder.button(text="❌ Удалить товар", callback_data="admin_delete")
     builder.button(text="📋 Все заказы", callback_data="admin_orders")
     builder.button(text="✅ Подтвердить заказ", callback_data="admin_confirm_order")
     builder.button(text="❌ Отменить заказ", callback_data="admin_cancel_order")
+    builder.button(text="📦 Обновить остатки", callback_data="admin_update_stock")
     builder.adjust(1)
 
     await message.answer(
@@ -38,12 +38,6 @@ async def admin_panel(message: Message):
         "Выберите действие:",
         reply_markup=builder.as_markup()
     )
-
-
-@router.message(Command("admin"))
-@admin_required
-async def admin_cmd(message: Message):
-    await admin_panel(message)
 
 
 @router.callback_query(F.data == "admin_orders")
@@ -56,7 +50,7 @@ async def admin_orders(callback: CallbackQuery):
         await callback.answer()
         return
 
-    for order in orders[:5]:  # Показываем последние 5 заказов
+    for order in orders[:5]:
         status_emoji = {
             'pending': '⏳',
             'confirmed': '✅',
@@ -76,7 +70,6 @@ async def admin_orders(callback: CallbackQuery):
             text += f"  • {item['product_name']} x{item['quantity']} - {item['price']}₽\n"
 
         text += "─" * 30 + "\n"
-
         await callback.message.answer(text)
 
     await callback.answer()
@@ -96,7 +89,7 @@ async def admin_confirm_order_start(callback: CallbackQuery):
     builder = InlineKeyboardBuilder()
     for order in pending_orders[:10]:
         builder.button(
-            text=f"✅ #{order['id']} - {order['total']}₽ ({order.get('first_name', 'Неизвестно')})",
+            text=f"✅ #{order['id']} - {order['total']}₽ ({order.get('first_name', 'Неизвестно')[:10]})",
             callback_data=f"confirm_{order['id']}"
         )
     builder.adjust(1)
@@ -115,16 +108,17 @@ async def admin_confirm_order(callback: CallbackQuery):
     order = await db.update_order_status(order_id, 'confirmed')
 
     if order:
-        # Отправляем уведомление пользователю
+        # Уведомление пользователю
         try:
             await callback.bot.send_message(
                 order['user_id'],
                 f"✅ Ваш заказ #{order_id} ПОДТВЕРЖДЁН!\n\n"
-                f"Скоро мы приступим к его приготовлению.\n"
-                f"По вопросам обращайтесь к администратору."
+                f"Скоро мы приступим к приготовлению.\n"
+                f"📍 Адрес доставки: {order['location']}\n"
+                f"💰 Сумма: {order['total']}₽"
             )
         except Exception as e:
-            print(f"❌ Не удалось отправить уведомление пользователю {order['user_id']}: {e}")
+            f"❌ Не удалось отправить уведомление: {e}"
 
         # Уведомление продавцу
         try:
@@ -155,7 +149,7 @@ async def admin_cancel_order_start(callback: CallbackQuery):
     builder = InlineKeyboardBuilder()
     for order in active_orders[:10]:
         builder.button(
-            text=f"❌ #{order['id']} - {order['total']}₽ ({order.get('first_name', 'Неизвестно')})",
+            text=f"❌ #{order['id']} - {order['total']}₽ ({order.get('first_name', 'Неизвестно')[:10]})",
             callback_data=f"cancel_{order['id']}"
         )
     builder.adjust(1)
@@ -174,7 +168,7 @@ async def admin_cancel_order(callback: CallbackQuery):
     order = await db.update_order_status(order_id, 'cancelled')
 
     if order:
-        # Отправляем уведомление пользователю
+        # Уведомление пользователю
         try:
             await callback.bot.send_message(
                 order['user_id'],
@@ -182,85 +176,7 @@ async def admin_cancel_order(callback: CallbackQuery):
                 f"По вопросам обращайтесь к администратору."
             )
         except Exception as e:
-            print(f"❌ Не удалось отправить уведомление пользователю {order['user_id']}: {e}")
-
-        # Уведомление продавцу
-        try:
-            await callback.bot.send_message(
-                SELLER_ID,
-                f"❌ Администратор отменил заказ #{order_id}\n"
-                f"👤 Покупатель: {order.get('first_name', 'Неизвестно')}"
-            )
-        except:
-            pass
+            f"❌ Не удалось отправить уведомление: {e}"
 
     await callback.message.edit_text(f"❌ Заказ #{order_id} отменён")
-    await callback.answer()
-
-
-@router.callback_query(F.data == "admin_add")
-@admin_required
-async def admin_add_start(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "Введите данные в формате:\n"
-        "Название | Цена | Количество\n\n"
-        "Пример: Ванильное|100|50"
-    )
-    await callback.answer()
-
-
-@router.message(F.text.contains("|"))
-@admin_required
-async def admin_add_product(message: Message):
-    try:
-        name, price, qty = message.text.split("|")
-        product_id = await db.add_product(name.strip(), int(price), int(qty))
-        await message.answer(f"✅ Товар '{name.strip()}' добавлен! ID: {product_id}")
-    except Exception as e:
-        await message.answer(f"❌ Ошибка: {e}\nИспользуйте формат: Название|Цена|Количество")
-
-
-@router.callback_query(F.data == "admin_update")
-@admin_required
-async def admin_update_start(callback: CallbackQuery):
-    products = await db.get_products()
-    if not products:
-        await callback.message.edit_text("❌ Нет товаров")
-        return
-
-    text = "📦 Выберите товар для обновления:\n\n"
-    for p in products:
-        text += f"🆔 {p['id']}: {p['name']} - {p['quantity']} шт.\n"
-    text += "\nОтправьте: ID|Новое_количество"
-
-    await callback.message.edit_text(text)
-    await callback.answer()
-
-
-@router.callback_query(F.data == "admin_delete")
-@admin_required
-async def admin_delete_start(callback: CallbackQuery):
-    products = await db.get_products()
-    if not products:
-        await callback.message.edit_text("❌ Нет товаров")
-        return
-
-    builder = InlineKeyboardBuilder()
-    for p in products:
-        builder.button(text=f"{p['name']} (ID: {p['id']})", callback_data=f"del_{p['id']}")
-    builder.adjust(2)
-
-    await callback.message.edit_text(
-        "❌ Выберите товар для удаления:",
-        reply_markup=builder.as_markup()
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("del_"))
-@admin_required
-async def admin_delete_confirm(callback: CallbackQuery):
-    product_id = int(callback.data.split("_")[1])
-    await db.delete_product(product_id)
-    await callback.message.edit_text(f"✅ Товар ID {product_id} удален")
     await callback.answer()

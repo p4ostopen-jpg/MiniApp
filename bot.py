@@ -1,14 +1,13 @@
 import asyncio
 import logging
 import json
-import aiosqlite
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery
+from aiogram.types import Message, WebAppInfo, CallbackQuery
 from aiogram.filters import CommandStart
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from config import BOT_TOKEN, SELLER_ID, ADMIN_IDS
 from database import Database
-from admin import router as admin_router, admin_panel
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from admin import router as admin_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,8 +36,7 @@ async def start(message: Message):
                 web_app=WebAppInfo(url=WEBAPP_URL)
             )]
         ],
-        resize_keyboard=True,
-        one_time_keyboard=True
+        resize_keyboard=True
     )
 
     await message.answer(
@@ -50,178 +48,40 @@ async def start(message: Message):
 
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
-    logger.info(f"🔥 ПОЛУЧЕНО СООБЩЕНИЕ: {message.web_app_data.data}")
-
     try:
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
         user_id = message.from_user.id
 
-        logger.info(f"📥 Запрос: {action} от {user_id}")
+        if action == 'create_order':
+            order_data = data.get('order', {})
 
-        if action == 'get_products':
-            products = await db.get_products()
-            # Отправляем данные обратно в WebApp
-            await bot.send_message(
+            # Сохраняем заказ в базу данных
+            order_id = await db.create_order_from_items(
                 user_id,
-                json.dumps({
-                    'type': 'products',
-                    'data': products
-                }, ensure_ascii=False, default=str)
+                order_data.get('location'),
+                order_data.get('items', [])
             )
-            logger.info(f"✅ Отправлено {len(products)} товаров")
-
-        elif action == 'create_order':
-            location = data.get('location')
-            items = data.get('items', [])
-
-            if not location or not items:
-                await bot.send_message(
-                    user_id,
-                    json.dumps({
-                        'type': 'error',
-                        'message': 'Нет адреса или товаров'
-                    })
-                )
-                return
-
-            # Создаём заказ
-            order_id = await db.create_order_from_items(user_id, location, items)
 
             if order_id:
-                # Получаем созданный заказ
-                orders = await db.get_user_orders(user_id)
-                current_order = next((o for o in orders if o['id'] == order_id), None)
-
-                # Форматируем заказ для отправки в WebApp
-                if current_order:
-                    formatted_order = {
-                        'id': current_order['id'],
-                        'created_at': current_order['created_at'],
-                        'location': current_order['location'],
-                        'total': current_order['total'],
-                        'status': current_order['status'],
-                        'status_text': {
-                            'pending': '⏳ Ждет подтверждения',
-                            'confirmed': '✅ Подтверждено',
-                            'completed': '👍 Выполнен',
-                            'cancelled': '❌ Отменён'
-                        }.get(current_order['status'], current_order['status']),
-                        'items': [
-                            {
-                                'name': item['product_name'],
-                                'quantity': item['quantity'],
-                                'price': item['price'],
-                                'total': item['price'] * item['quantity']
-                            }
-                            for item in current_order['items']
-                        ]
-                    }
-
-                    # Уведомление продавцу
-                    try:
-                        await bot.send_message(
-                            SELLER_ID,
-                            f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
-                            f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
-                            f"📍 {location}\n"
-                            f"💰 Сумма: {current_order['total']}₽\n\n"
-                            f"📦 Товары:\n" +
-                            "\n".join([f"• {item['product_name']} x{item['quantity']} - {item['price'] * item['quantity']}₽"
-                                       for item in current_order['items']])
-                        )
-                    except Exception as e:
-                        logger.error(f"❌ Ошибка уведомления продавца: {e}")
-
-                    # Отправляем подтверждение и обновленные заказы в WebApp
-                    await bot.send_message(
-                        user_id,
-                        json.dumps({
-                            'type': 'order_created',
-                            'order': formatted_order,
-                            'message': f'✅ Заказ #{order_id} создан!'
-                        }, ensure_ascii=False, default=str)
-                    )
-
-                    logger.info(f"✅ Заказ #{order_id} успешно создан")
-                else:
-                    await bot.send_message(
-                        user_id,
-                        json.dumps({
-                            'type': 'error',
-                            'message': 'Ошибка получения заказа'
-                        })
-                    )
-            else:
+                # Уведомление продавцу
                 await bot.send_message(
-                    user_id,
-                    json.dumps({
-                        'type': 'error',
-                        'message': 'Ошибка создания заказа'
-                    })
+                    SELLER_ID,
+                    f"🆕 НОВЫЙ ЗАКАЗ #{order_data.get('id')}\n"
+                    f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
+                    f"📍 {order_data.get('location')}\n"
+                    f"💰 Сумма: {order_data.get('total')}₽\n\n"
+                    f"📦 Товары:\n" +
+                    "\n".join([f"• {item['name']} x{item['quantity']} - {item['price'] * item['quantity']}₽"
+                               for item in order_data.get('items', [])])
                 )
 
-        elif action == 'get_orders':
-            orders = await db.get_user_orders(user_id)
-            # Форматируем заказы для отображения в приложении
-            formatted_orders = []
-            for order in orders:
-                formatted_order = {
-                    'id': order['id'],
-                    'created_at': order['created_at'],
-                    'location': order['location'],
-                    'total': order['total'],
-                    'status': order['status'],
-                    'status_text': {
-                        'pending': '⏳ Ждет подтверждения',
-                        'confirmed': '✅ Подтверждено',
-                        'completed': '👍 Выполнен',
-                        'cancelled': '❌ Отменён'
-                    }.get(order['status'], order['status']),
-                    'items': [
-                        {
-                            'name': item['product_name'],
-                            'quantity': item['quantity'],
-                            'price': item['price'],
-                            'total': item['price'] * item['quantity']
-                        }
-                        for item in order['items']
-                    ]
-                }
-                formatted_orders.append(formatted_order)
-
-            await bot.send_message(
-                user_id,
-                json.dumps({
-                    'type': 'orders',
-                    'data': formatted_orders
-                }, ensure_ascii=False, default=str)
-            )
-            logger.info(f"✅ Отправлено {len(formatted_orders)} заказов")
+                logger.info(f"✅ Заказ #{order_id} успешно создан")
+            else:
+                logger.error("❌ Ошибка создания заказа")
 
     except Exception as e:
         logger.error(f"❌ Ошибка: {e}")
-        await bot.send_message(
-            message.from_user.id,
-            json.dumps({
-                'type': 'error',
-                'message': str(e)
-            })
-        )
-
-
-@dp.callback_query(F.data == "my_orders")
-async def my_orders(callback: CallbackQuery):
-    # Этот метод больше не используется, оставляем для совместимости
-    await callback.answer("📱 Откройте магазин через кнопку '🍦 Открыть магазин'", show_alert=True)
-
-
-@dp.callback_query(F.data == "admin_panel")
-async def admin_shortcut(callback: CallbackQuery):
-    if callback.from_user.id in ADMIN_IDS:
-        await admin_panel(callback.message)
-    else:
-        await callback.answer("❌ Нет доступа", show_alert=True)
 
 
 async def main():
