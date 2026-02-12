@@ -3,8 +3,8 @@ import logging
 import json
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery
-from aiogram.filters import CommandStart, Command
-from config import BOT_TOKEN, SELLER_ID
+from aiogram.filters import CommandStart
+from config import BOT_TOKEN, SELLER_ID, ADMIN_IDS
 from database import Database
 from admin import router as admin_router
 
@@ -18,7 +18,7 @@ db = Database()
 dp.include_router(admin_router)
 
 # 🌟 URL твоего Mini App (ЗАМЕНИ НА СВОЙ!)
-WEBAPP_URL = "https://твой-аккаунт.github.io/telegram-shop-bot/web/"
+WEBAPP_URL = "https://p4ostopen-jpg.github.io/telegram-shop-bot/web/"
 
 
 @dp.message(CommandStart())
@@ -35,9 +35,14 @@ async def start(message: Message):
             text="🍦 Открыть магазин",
             web_app=WebAppInfo(url=WEBAPP_URL)
         )],
-        [InlineKeyboardButton(text="📋 Мои заказы", callback_data="my_orders")],
-        [InlineKeyboardButton(text="👨‍💼 Админка", callback_data="admin")]  # Только для админов
+        [InlineKeyboardButton(text="📋 Мои заказы", callback_data="my_orders")]
     ])
+
+    # Добавляем кнопку админки только для админов
+    if message.from_user.id in ADMIN_IDS:
+        keyboard.inline_keyboard.append(
+            [InlineKeyboardButton(text="👨‍💼 Админ-панель", callback_data="admin_panel")]
+        )
 
     await message.answer(
         f"👋 Привет, {message.from_user.first_name}!\n"
@@ -140,10 +145,12 @@ async def my_orders(callback: CallbackQuery):
     await callback.answer()
 
 
-@dp.callback_query(F.data == "admin")
+@dp.callback_query(F.data == "admin_panel")
 async def admin_shortcut(callback: CallbackQuery):
     """Быстрый доступ к админке"""
-    if callback.from_user.id in [123456789]:  # Замени на свой ID
+    from admin import admin_panel  # Импортируем здесь чтобы избежать циклического импорта
+
+    if callback.from_user.id in ADMIN_IDS:
         await admin_panel(callback.message)
     else:
         await callback.answer("❌ Нет доступа", show_alert=True)
@@ -161,8 +168,8 @@ async def main():
         await db.add_product("Фисташковое", 150, 25)
         await db.add_product("Карамельное", 130, 35)
         logger.info("✅ Тестовые товары добавлены")
-    except:
-        logger.info("📦 Товары уже существуют")
+    except Exception as e:
+        logger.info(f"📦 Товары уже существуют: {e}")
 
     logger.info("🤖 Бот запущен!")
     await dp.start_polling(bot)
