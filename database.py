@@ -79,7 +79,7 @@ class Database:
             result = []
             for p in products:
                 p = dict(p)
-                # ⚠️ ПЕРЕВОДИМ РУССКИЕ НАЗВАНИЯ В АНГЛИЙСКИЕ ФАЙЛЫ
+                # ⚠️ ПРОВЕРЯЕМ СУЩЕСТВОВАНИЕ ФАЙЛОВ
                 name_map = {
                     'Ванильное': 'vanilla',
                     'Шоколадное': 'chocolate',
@@ -88,6 +88,7 @@ class Database:
                     'Карамельное': 'caramel'
                 }
                 eng_name = name_map.get(p['name'], 'ice-cream')
+                # ВАЖНО: Убедитесь что файлы .jpg есть в репозитории!
                 p['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.jpg"
                 p['stock'] = p['quantity']
                 result.append(p)

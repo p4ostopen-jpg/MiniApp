@@ -47,14 +47,15 @@ async def start(message: Message):
         reply_markup=keyboard
     )
 
+
 @dp.message(F.web_app_data)
 async def web_app_handler(message: Message):
-    # ⚠️ САМАЯ ВАЖНАЯ СТРОКА - ПРОВЕРЬ ЧТО ОНА ЕСТЬ!
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ ОТ MINI APP!")
     print(f"📦 Данные: {message.web_app_data.data}")
-    print("="*50 + "\n")
+    print("=" * 50 + "\n")
     logger.info(f"🔥🔥🔥 ПОЛУЧЕНО СООБЩЕНИЕ: {message.web_app_data.data}")
+
     try:
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
@@ -63,39 +64,54 @@ async def web_app_handler(message: Message):
         logger.info(f"📥 Получен запрос: {action} от {user_id}")
         logger.info(f"📦 Данные: {data}")
 
-
         if action == 'get_products':
             products = await db.get_products()
-            await message.answer(json.dumps(products, ensure_ascii=False))
+            # ⚠️ ВАЖНО: Отправляем через web_app_data ответ
+            await bot.send_message(
+                user_id,
+                json.dumps(products, ensure_ascii=False)
+            )
 
         elif action == 'get_cart':
             cart = await db.get_cart(user_id)
             total = sum(item['price'] * item['quantity'] for item in cart)
-            await message.answer(json.dumps({
-                'items': [
-                    {'id': item['product_id'], 'name': item['name'],
-                     'price': item['price'], 'quantity': item['quantity']}
-                    for item in cart
-                ],
-                'total': total
-            }, ensure_ascii=False))
+            await bot.send_message(
+                user_id,
+                json.dumps({
+                    'items': [
+                        {'id': item['product_id'], 'name': item['name'],
+                         'price': item['price'], 'quantity': item['quantity']}
+                        for item in cart
+                    ],
+                    'total': total
+                }, ensure_ascii=False)
+            )
 
         elif action == 'add_to_cart':
             product_id = data.get('product_id')
             quantity = data.get('quantity', 1)
             await db.add_to_cart(user_id, product_id, quantity)
-            await message.answer(json.dumps({'success': True}))
+            await bot.send_message(
+                user_id,
+                json.dumps({'success': True})
+            )
 
         elif action == 'update_cart':
             product_id = data.get('product_id')
             change = data.get('change')
             await db.update_cart(user_id, product_id, change)
-            await message.answer(json.dumps({'success': True}))
+            await bot.send_message(
+                user_id,
+                json.dumps({'success': True})
+            )
 
         elif action == 'create_order':
             location = data.get('location')
             if not location:
-                await message.answer(json.dumps({'error': 'Нет адреса'}))
+                await bot.send_message(
+                    user_id,
+                    json.dumps({'error': 'Нет адреса'})
+                )
                 return
 
             order_id = await db.create_order(user_id, location)
@@ -106,9 +122,15 @@ async def web_app_handler(message: Message):
                     f"👤 {message.from_user.full_name}\n"
                     f"📍 {location}"
                 )
-                await message.answer(json.dumps({'order_id': order_id}))
+                await bot.send_message(
+                    user_id,
+                    json.dumps({'order_id': order_id})
+                )
             else:
-                await message.answer(json.dumps({'error': 'Корзина пуста'}))
+                await bot.send_message(
+                    user_id,
+                    json.dumps({'error': 'Корзина пуста'})
+                )
 
         elif action == 'get_orders':
             orders = await db.get_user_orders(user_id)
@@ -130,11 +152,17 @@ async def web_app_handler(message: Message):
                         for item in items
                     ]
                 })
-            await message.answer(json.dumps(detailed_orders, ensure_ascii=False))
+            await bot.send_message(
+                user_id,
+                json.dumps(detailed_orders, ensure_ascii=False)
+            )
 
     except Exception as e:
         logger.error(f"Mini App error: {e}")
-        await message.answer(json.dumps({'error': str(e)}))
+        await bot.send_message(
+            message.from_user.id,
+            json.dumps({'error': str(e)})
+        )
 
 @dp.callback_query(F.data == "my_orders")
 async def my_orders(callback: CallbackQuery):
