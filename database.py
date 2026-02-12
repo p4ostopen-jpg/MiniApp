@@ -79,7 +79,8 @@ class Database:
             result = []
             for p in products:
                 p = dict(p)
-                p['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/images/{p['name'].lower()}.jpg"
+                # ⚠️ УБИРАЕМ /images/ - фото в корне!
+                p['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{p['name'].lower()}.jpg"
                 p['stock'] = p['quantity']
                 result.append(p)
             return result
