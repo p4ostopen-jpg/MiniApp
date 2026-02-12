@@ -131,9 +131,14 @@ async def web_app_handler(message: Message):
 
         if action == 'get_products':
             products = await db.get_products()
+            # Преобразуем даты в строки для JSON
+            for p in products:
+                if 'created_at' in p:
+                    p['created_at'] = str(p['created_at'])
+            # Отправляем JSON обратно в Mini App
             await bot.send_message(
                 user_id,
-                json.dumps(products, ensure_ascii=False)
+                json.dumps({'action': 'products', 'data': products}, ensure_ascii=False)
             )
 
         elif action == 'create_order':
@@ -143,71 +148,36 @@ async def web_app_handler(message: Message):
             if not location or not items:
                 await bot.send_message(
                     user_id,
-                    json.dumps({'error': 'Нет адреса или товаров'})
+                    json.dumps({'action': 'error', 'message': 'Нет адреса или товаров'}, ensure_ascii=False)
                 )
                 return
 
-            # Создаём заказ
             order_id = await db.create_order_from_items(user_id, location, items)
 
             if order_id:
-                # Получаем информацию о заказе для уведомлений
-                orders = await db.get_user_orders(user_id)
-                current_order = next((o for o in orders if o['id'] == order_id), None)
-
-                if current_order:
-                    total = current_order['total']
-                    items_list = current_order['items']
-
-                    # Формируем сообщение для продавца и админов
-                    order_text = f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
-                    order_text += f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
-                    order_text += f"📍 {location}\n"
-                    order_text += f"💰 Сумма: {total}₽\n\n"
-                    order_text += "📦 Товары:\n"
-
-                    for item in items_list:
-                        order_text += f"• {item['product_name']} x{item['quantity']} - {item['price'] * item['quantity']}₽\n"
-
-                    # Уведомление продавцу
-                    await safe_send_message(SELLER_ID, order_text)
-
-                    # Уведомление всем админам
-                    for admin_id in ADMIN_IDS:
-                        if admin_id != SELLER_ID:  # Чтобы не дублировать, если продавец уже в админах
-                            await safe_send_message(admin_id, order_text)
-
-                    logger.info(f"✅ Уведомления о заказе #{order_id} отправлены")
-
-                # Подтверждение пользователю
-                await safe_send_message(
-                    user_id,
-                    f"✅ Заказ #{order_id} создан!\n"
-                    f"📍 Адрес: {location}\n"
-                    f"Статус: ⏳ Ожидает подтверждения\n\n"
-                    f"Мы свяжемся с вами для уточнения деталей."
-                )
-
-                logger.info(f"✅ Заказ #{order_id} успешно создан")
-
                 # Отправляем успешный ответ в Mini App
                 await bot.send_message(
                     user_id,
-                    json.dumps({'success': True, 'order_id': order_id})
+                    json.dumps({
+                        'action': 'order_created',
+                        'order_id': order_id,
+                        'message': f'✅ Заказ #{order_id} создан!'
+                    }, ensure_ascii=False)
                 )
+
+                # ... остальные уведомления ...
             else:
-                error_msg = 'Ошибка создания заказа. Товар не найден в базе.'
-                logger.error(f"❌ {error_msg}")
                 await bot.send_message(
                     user_id,
-                    json.dumps({'error': error_msg})
+                    json.dumps({'action': 'error', 'message': 'Ошибка создания заказа'}, ensure_ascii=False)
                 )
 
         elif action == 'get_orders':
             orders = await db.get_user_orders(user_id)
+            # Отправляем JSON обратно в Mini App
             await bot.send_message(
                 user_id,
-                json.dumps(orders, ensure_ascii=False, default=str)
+                json.dumps({'action': 'orders', 'data': orders}, ensure_ascii=False, default=str)
             )
 
     except Exception as e:
@@ -215,11 +185,10 @@ async def web_app_handler(message: Message):
         try:
             await bot.send_message(
                 message.from_user.id,
-                json.dumps({'error': str(e)})
+                json.dumps({'action': 'error', 'message': str(e)[:100]}, ensure_ascii=False)
             )
         except:
             pass
-
 
 @dp.callback_query(F.data == "my_orders")
 async def my_orders(callback: CallbackQuery):
@@ -235,34 +204,24 @@ async def admin_shortcut(callback: CallbackQuery):
         await callback.answer("❌ Нет доступа", show_alert=True)
 
 
-# В функции main() замените блок добавления товаров:
-
 async def main():
     await db.create_tables()
 
-    # Очищаем таблицу products перед добавлением
-    async with aiosqlite.connect('shop.db') as db_conn:
-        await db_conn.execute('DELETE FROM products')
-        await db_conn.commit()
+    # Добавляем тестовые товары
+    try:
+        product_ids = []
+        product_ids.append(await db.add_product("Ванильное", 100, 50))
+        product_ids.append(await db.add_product("Шоколадное", 120, 40))
+        product_ids.append(await db.add_product("Клубничное", 110, 30))
+        product_ids.append(await db.add_product("Фисташковое", 150, 25))
+        product_ids.append(await db.add_product("Карамельное", 130, 35))
+        logger.info(f"✅ Тестовые товары добавлены. ID: {product_ids}")
+    except Exception as e:
+        logger.info(f"📦 Товары уже существуют: {e}")
 
-    # Добавляем товары с фиксированными ID
-    async with aiosqlite.connect('shop.db') as db_conn:
-        products_data = [
-            (1, "Ванильное", 100, 50),
-            (2, "Шоколадное", 120, 40),
-            (3, "Клубничное", 110, 30),
-            (4, "Фисташковое", 150, 25),
-            (5, "Карамельное", 130, 35)
-        ]
+    logger.info("🤖 Бот запущен!")
+    await dp.start_polling(bot)
 
-        for prod_id, name, price, qty in products_data:
-            await db_conn.execute('''
-                INSERT OR REPLACE INTO products (id, name, price, quantity, is_available)
-                VALUES (?, ?, ?, ?, 1)
-            ''', (prod_id, name, price, qty))
-
-        await db_conn.commit()
-        logger.info(f"✅ Товары добавлены с фиксированными ID 1-5")
 
 if __name__ == "__main__":
     asyncio.run(main())
