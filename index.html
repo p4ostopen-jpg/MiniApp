@@ -20,7 +20,8 @@
         .product-image { width: 100%; height: 200px; object-fit: cover; border-radius: 16px; margin-bottom: 16px; background: #f8fafc; }
         .product-name { font-size: 20px; font-weight: 700; color: #1a2639; margin-bottom: 8px; }
         .product-price { font-size: 28px; font-weight: 800; color: #4a6fa5; margin-bottom: 12px; }
-        .product-stock { color: #6b7b8c; font-size: 14px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #eef2f5; }
+        .product-stock { color: #6b7c8c; font-size: 14px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #eef2f5; }
+        .product-id { font-size: 12px; color: #999; margin-bottom: 8px; }
         .quantity-control { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border-radius: 16px; padding: 4px; margin-bottom: 16px; }
         .qty-btn { width: 44px; height: 44px; border: none; background: white; border-radius: 12px; font-size: 20px; font-weight: 600; color: #4a6fa5; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
         .qty-btn:hover { background: #4a6fa5; color: white; }
@@ -125,14 +126,7 @@
         tg.MainButton.hide();
 
         // ========== ДАННЫЕ ==========
-        let products = [
-            { id: 1, name: "Ванильное", price: 100, stock: 50, image_url: "https://p4ostopen-jpg.github.io/MiniApp/vanilla.jpg" },
-            { id: 2, name: "Шоколадное", price: 120, stock: 40, image_url: "https://p4ostopen-jpg.github.io/MiniApp/chocolate.jpg" },
-            { id: 3, name: "Клубничное", price: 110, stock: 30, image_url: "https://p4ostopen-jpg.github.io/MiniApp/strawberry.jpg" },
-            { id: 4, name: "Фисташковое", price: 150, stock: 25, image_url: "https://p4ostopen-jpg.github.io/MiniApp/pistachio.jpg" },
-            { id: 5, name: "Карамельное", price: 130, stock: 35, image_url: "https://p4ostopen-jpg.github.io/MiniApp/caramel.jpg" }
-        ];
-
+        let products = [];
         let cart = [];
 
         // ========== ОТЛАДКА ==========
@@ -158,23 +152,34 @@
             setTimeout(() => toast.style.display = 'none', 2000);
         }
 
-        // ========== ОТПРАВКА В БОТ (только заказ) ==========
-        function sendToBot(action, data = {}) {
-            try {
-                tg.sendData(JSON.stringify({action, ...data}));
-                showToast(`📤 ${action}`);
-            } catch (e) {
-                console.error(e);
-            }
+        // ========== ЗАГРУЗКА ТОВАРОВ ИЗ БОТА ==========
+        function loadProductsFromBot() {
+            showToast('📦 Загрузка товаров...');
+            logToConsole('info', 'Запрашиваем товары у бота');
+
+            // Отправляем запрос на получение товаров
+            tg.sendData(JSON.stringify({action: 'get_products'}));
+
+            // Т.к. мы не можем напрямую получить ответ, используем setTimeout для загрузки дефолтных товаров
+            // В реальном приложении бот отправит ответ обратно в Mini App
+            setTimeout(() => {
+                if (products.length === 0) {
+                    // Дефолтные товары на случай, если бот не ответил
+                    products = [
+                        { id: 1, name: "Ванильное", price: 100, stock: 50, image_url: "https://p4ostopen-jpg.github.io/MiniApp/vanilla.jpg" },
+                        { id: 2, name: "Шоколадное", price: 120, stock: 40, image_url: "https://p4ostopen-jpg.github.io/MiniApp/chocolate.jpg" },
+                        { id: 3, name: "Клубничное", price: 110, stock: 30, image_url: "https://p4ostopen-jpg.github.io/MiniApp/strawberry.jpg" },
+                        { id: 4, name: "Фисташковое", price: 150, stock: 25, image_url: "https://p4ostopen-jpg.github.io/MiniApp/pistachio.jpg" },
+                        { id: 5, name: "Карамельное", price: 130, stock: 35, image_url: "https://p4ostopen-jpg.github.io/MiniApp/caramel.jpg" }
+                    ];
+                    renderProducts();
+                    showToast(`✅ Загружено ${products.length} товаров`);
+                }
+                updateDebugInfo();
+            }, 500);
         }
 
         // ========== ТОВАРЫ ==========
-        function loadProducts() {
-            renderProducts();
-            showToast(`✅ Загружено ${products.length} товаров`);
-            updateDebugInfo();
-        }
-
         function renderProducts() {
             const container = document.getElementById('products');
             container.innerHTML = products.map(p => `
@@ -183,6 +188,7 @@
                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><rect width=%22300%22 height=%22200%22 fill=%22%23f8fafc%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%2248%22 text-anchor=%22middle%22 dy=%22.3em%22>🍦</text></svg>'">
                     <div class="product-name">${p.name}</div>
                     <div class="product-price">${p.price} ₽</div>
+                    <div class="product-id">🆔 ID: ${p.id}</div>
                     <div class="product-stock">В наличии: ${p.stock} шт.</div>
                     <div class="quantity-control">
                         <button class="qty-btn" onclick="decreaseQty(${p.id})">−</button>
@@ -237,6 +243,7 @@
                         <div class="cart-item-info">
                             <h4>${item.name}</h4>
                             <div class="cart-item-price">${item.price} ₽</div>
+                            <div class="product-id">ID: ${item.id}</div>
                         </div>
                         <div class="cart-item-controls">
                             <div class="cart-qty">
@@ -282,16 +289,29 @@
                 return;
             }
 
-            sendToBot('create_order', {
+            if (cart.length === 0) {
+                showToast('🛒 Корзина пуста!', true);
+                return;
+            }
+
+            const orderData = {
+                action: 'create_order',
                 location: location,
                 items: cart.map(i => ({id: i.id, quantity: i.quantity}))
-            });
+            };
 
-            showToast('✅ Заказ отправлен боту!');
+            logToConsole('info', 'Отправка заказа', orderData);
+            tg.sendData(JSON.stringify(orderData));
+
+            showToast('✅ Заказ отправлен! Ожидайте подтверждения');
+
+            // Очищаем корзину
             cart = [];
             renderCart();
             updateCartCount();
-            showPage('orders');
+
+            // Переходим на страницу заказов
+            setTimeout(() => showPage('orders'), 500);
         }
 
         function getLocation() {
@@ -312,7 +332,11 @@
         }
 
         function loadOrders() {
-            document.getElementById('orders').innerHTML = '<div class="empty-state">📋 Заказы хранятся в боте</div>';
+            // Запрашиваем заказы у бота
+            tg.sendData(JSON.stringify({action: 'get_orders'}));
+
+            // Показываем заглушку
+            document.getElementById('orders').innerHTML = '<div class="empty-state">📋 Загрузка заказов...</div>';
         }
 
         function showPage(page) {
@@ -325,7 +349,11 @@
             if (page === 'main') {
                 document.getElementById('mainPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[0].classList.add('active');
-                loadProducts();
+                if (products.length === 0) {
+                    loadProductsFromBot();
+                } else {
+                    renderProducts();
+                }
             } else if (page === 'cart') {
                 document.getElementById('cartPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[1].classList.add('active');
@@ -344,6 +372,7 @@
             showPage('main');
         });
 
+        // Экспортируем функции в глобальную область
         window.showPage = showPage;
         window.increaseQty = increaseQty;
         window.decreaseQty = decreaseQty;
@@ -353,6 +382,7 @@
         window.checkout = checkout;
         window.loadCart = loadCart;
         window.loadOrders = loadOrders;
+        window.products = products;
     </script>
 </body>
 </html>

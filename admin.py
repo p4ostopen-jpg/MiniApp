@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import ADMIN_IDS
+from config import ADMIN_IDS, SELLER_ID
 from database import Database
 
 router = Router()
@@ -96,7 +96,7 @@ async def admin_confirm_order_start(callback: CallbackQuery):
     builder = InlineKeyboardBuilder()
     for order in pending_orders[:10]:
         builder.button(
-            text=f"✅ #{order['id']} - {order['total']}₽",
+            text=f"✅ #{order['id']} - {order['total']}₽ ({order.get('first_name', 'Неизвестно')})",
             callback_data=f"confirm_{order['id']}"
         )
     builder.adjust(1)
@@ -112,19 +112,30 @@ async def admin_confirm_order_start(callback: CallbackQuery):
 @admin_required
 async def admin_confirm_order(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[1])
-    await db.update_order_status(order_id, 'confirmed')
-
-    # Получаем информацию о заказе
-    orders = await db.get_all_orders()
-    order = next((o for o in orders if o['id'] == order_id), None)
+    order = await db.update_order_status(order_id, 'confirmed')
 
     if order:
         # Отправляем уведомление пользователю
-        await callback.bot.send_message(
-            order['user_id'],
-            f"✅ Ваш заказ #{order_id} ПОДТВЕРЖДЁН!\n\n"
-            f"Скоро мы приступим к его приготовлению."
-        )
+        try:
+            await callback.bot.send_message(
+                order['user_id'],
+                f"✅ Ваш заказ #{order_id} ПОДТВЕРЖДЁН!\n\n"
+                f"Скоро мы приступим к его приготовлению.\n"
+                f"По вопросам обращайтесь к администратору."
+            )
+        except Exception as e:
+            print(f"❌ Не удалось отправить уведомление пользователю {order['user_id']}: {e}")
+
+        # Уведомление продавцу
+        try:
+            await callback.bot.send_message(
+                SELLER_ID,
+                f"✅ Администратор подтвердил заказ #{order_id}\n"
+                f"👤 Покупатель: {order.get('first_name', 'Неизвестно')}\n"
+                f"📍 Адрес: {order['location']}"
+            )
+        except:
+            pass
 
     await callback.message.edit_text(f"✅ Заказ #{order_id} подтверждён")
     await callback.answer()
@@ -144,7 +155,7 @@ async def admin_cancel_order_start(callback: CallbackQuery):
     builder = InlineKeyboardBuilder()
     for order in active_orders[:10]:
         builder.button(
-            text=f"❌ #{order['id']} - {order['total']}₽",
+            text=f"❌ #{order['id']} - {order['total']}₽ ({order.get('first_name', 'Неизвестно')})",
             callback_data=f"cancel_{order['id']}"
         )
     builder.adjust(1)
@@ -160,25 +171,33 @@ async def admin_cancel_order_start(callback: CallbackQuery):
 @admin_required
 async def admin_cancel_order(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[1])
-    await db.update_order_status(order_id, 'cancelled')
-
-    # Получаем информацию о заказе
-    orders = await db.get_all_orders()
-    order = next((o for o in orders if o['id'] == order_id), None)
+    order = await db.update_order_status(order_id, 'cancelled')
 
     if order:
         # Отправляем уведомление пользователю
-        await callback.bot.send_message(
-            order['user_id'],
-            f"❌ Ваш заказ #{order_id} ОТМЕНЁН.\n\n"
-            f"По вопросам обращайтесь к администратору."
-        )
+        try:
+            await callback.bot.send_message(
+                order['user_id'],
+                f"❌ Ваш заказ #{order_id} ОТМЕНЁН.\n\n"
+                f"По вопросам обращайтесь к администратору."
+            )
+        except Exception as e:
+            print(f"❌ Не удалось отправить уведомление пользователю {order['user_id']}: {e}")
+
+        # Уведомление продавцу
+        try:
+            await callback.bot.send_message(
+                SELLER_ID,
+                f"❌ Администратор отменил заказ #{order_id}\n"
+                f"👤 Покупатель: {order.get('first_name', 'Неизвестно')}"
+            )
+        except:
+            pass
 
     await callback.message.edit_text(f"❌ Заказ #{order_id} отменён")
     await callback.answer()
 
 
-# Остальные админ-функции (добавление, удаление товаров и т.д.)
 @router.callback_query(F.data == "admin_add")
 @admin_required
 async def admin_add_start(callback: CallbackQuery):
@@ -195,8 +214,8 @@ async def admin_add_start(callback: CallbackQuery):
 async def admin_add_product(message: Message):
     try:
         name, price, qty = message.text.split("|")
-        await db.add_product(name.strip(), int(price), int(qty))
-        await message.answer(f"✅ Товар '{name.strip()}' добавлен!")
+        product_id = await db.add_product(name.strip(), int(price), int(qty))
+        await message.answer(f"✅ Товар '{name.strip()}' добавлен! ID: {product_id}")
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}\nИспользуйте формат: Название|Цена|Количество")
 
@@ -228,7 +247,7 @@ async def admin_delete_start(callback: CallbackQuery):
 
     builder = InlineKeyboardBuilder()
     for p in products:
-        builder.button(text=f"{p['name']}", callback_data=f"del_{p['id']}")
+        builder.button(text=f"{p['name']} (ID: {p['id']})", callback_data=f"del_{p['id']}")
     builder.adjust(2)
 
     await callback.message.edit_text(
@@ -243,5 +262,5 @@ async def admin_delete_start(callback: CallbackQuery):
 async def admin_delete_confirm(callback: CallbackQuery):
     product_id = int(callback.data.split("_")[1])
     await db.delete_product(product_id)
-    await callback.message.edit_text("✅ Товар удален")
+    await callback.message.edit_text(f"✅ Товар ID {product_id} удален")
     await callback.answer()
