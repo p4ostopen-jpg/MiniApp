@@ -132,8 +132,52 @@
         tg.MainButton.hide();
 
         // ========== ДАННЫЕ ==========
-        let products = [];
+        // Локальные товары для быстрой работы
+        let products = [
+            {
+                id: 1,
+                name: "Ванильное",
+                price: 100,
+                stock: 50,
+                quantity: 50,
+                image_url: "https://p4ostopen-jpg.github.io/MiniApp/vanilla.jpg"
+            },
+            {
+                id: 2,
+                name: "Шоколадное",
+                price: 120,
+                stock: 40,
+                quantity: 40,
+                image_url: "https://p4ostopen-jpg.github.io/MiniApp/chocolate.jpg"
+            },
+            {
+                id: 3,
+                name: "Клубничное",
+                price: 110,
+                stock: 30,
+                quantity: 30,
+                image_url: "https://p4ostopen-jpg.github.io/MiniApp/strawberry.jpg"
+            },
+            {
+                id: 4,
+                name: "Фисташковое",
+                price: 150,
+                stock: 25,
+                quantity: 25,
+                image_url: "https://p4ostopen-jpg.github.io/MiniApp/pistachio.jpg"
+            },
+            {
+                id: 5,
+                name: "Карамельное",
+                price: 130,
+                stock: 35,
+                quantity: 35,
+                image_url: "https://p4ostopen-jpg.github.io/MiniApp/caramel.jpg"
+            }
+        ];
+
         let cart = [];
+        let orders = [];
 
         // ========== ОТЛАДКА ==========
         function updateDebugInfo() {
@@ -163,6 +207,7 @@
             try {
                 tg.sendData(JSON.stringify({action, ...data}));
                 logToConsole('info', `📤 Отправка: ${action}`, data);
+                showToast(`📤 Запрос отправлен`);
             } catch (e) {
                 console.error(e);
                 showToast('❌ Ошибка отправки', true);
@@ -180,27 +225,25 @@
                     if (Array.isArray(data)) {
                         if (data.length > 0) {
                             if (data[0].name !== undefined && data[0].price !== undefined) {
-                                // Это товары
+                                // Это товары от бота - обновляем локальные товары
                                 products = data;
                                 renderProducts();
                                 showToast(`✅ Загружено ${data.length} товаров`);
                                 updateDebugInfo();
                             } else if (data[0].id !== undefined && data[0].status !== undefined) {
-                                // Это заказы
-                                renderOrders(data);
+                                // Это заказы от бота
+                                orders = data;
+                                renderOrders(orders);
                                 showToast(`📋 Загружено ${data.length} заказов`);
                             }
                         } else {
                             // Пустой массив - нет заказов
+                            orders = [];
                             renderOrders([]);
                         }
                     } else if (data.success) {
                         // Успешное создание заказа
                         showToast(`✅ Заказ #${data.order_id} создан`);
-                        // Обновляем список заказов
-                        setTimeout(() => {
-                            sendToBot('get_orders');
-                        }, 500);
                     } else if (data.error) {
                         showToast(`❌ ${data.error}`, true);
                     }
@@ -214,13 +257,13 @@
         function renderProducts() {
             const container = document.getElementById('products');
             if (!products || products.length === 0) {
-                container.innerHTML = '<div class="empty-state">🍦 Товары загружаются...</div>';
+                container.innerHTML = '<div class="empty-state">🍦 Товары временно недоступны</div>';
                 return;
             }
 
             container.innerHTML = products.map(p => `
                 <div class="product-card">
-                    <img src="${p.image_url || 'https://p4ostopen-jpg.github.io/MiniApp/ice-cream.jpg'}" alt="${p.name}" class="product-image"
+                    <img src="${p.image_url}" alt="${p.name}" class="product-image"
                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><rect width=%22300%22 height=%22200%22 fill=%22%23f8fafc%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%2248%22 text-anchor=%22middle%22 dy=%22.3em%22>🍦</text></svg>'">
                     <div class="product-name">${p.name}</div>
                     <div class="product-price">${p.price} ₽</div>
@@ -233,19 +276,25 @@
                     <button class="add-btn" onclick="addToCart(${p.id})">➕ Добавить в корзину</button>
                 </div>
             `).join('');
+
+            updateDebugInfo();
         }
 
         function increaseQty(id) {
             const el = document.getElementById(`qty_${id}`);
             let qty = parseInt(el.innerText);
             const prod = products.find(p => p.id === id);
-            if (qty < (prod.stock || prod.quantity || 0)) el.innerText = qty + 1;
+            if (qty < (prod.stock || prod.quantity || 0)) {
+                el.innerText = qty + 1;
+            }
         }
 
         function decreaseQty(id) {
             const el = document.getElementById(`qty_${id}`);
             let qty = parseInt(el.innerText);
-            if (qty > 1) el.innerText = qty - 1;
+            if (qty > 1) {
+                el.innerText = qty - 1;
+            }
         }
 
         // ========== КОРЗИНА ==========
@@ -322,6 +371,11 @@
             document.getElementById('cartCount').innerText = count;
         }
 
+        function loadCart() {
+            renderCart();
+            updateCartCount();
+        }
+
         // ========== ОФОРМЛЕНИЕ ЗАКАЗА ==========
         function checkout() {
             const location = document.getElementById('location').value.trim();
@@ -337,12 +391,32 @@
                 return;
             }
 
+            // Создаем тестовый заказ для отображения
+            const testOrder = {
+                id: Math.floor(Math.random() * 1000),
+                created_at: new Date().toLocaleString('ru-RU').slice(0, 16),
+                location: location,
+                total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                status: 'pending',
+                status_text: '⏳ Ожидает подтверждения',
+                items: cart.map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.price,
+                    total: item.price * item.quantity
+                }))
+            };
+
+            // Добавляем заказ в локальный массив
+            orders = [testOrder, ...orders];
+
+            // Отправляем в бота
             sendToBot('create_order', {
                 location: location,
                 items: cart.map(i => ({id: i.id, quantity: i.quantity}))
             });
 
-            showToast('✅ Заказ отправлен!');
+            showToast('✅ Заказ оформлен!');
 
             // Очищаем корзину
             cart = [];
@@ -378,32 +452,37 @@
 
         // ========== ЗАКАЗЫ ==========
         function loadOrders() {
-            document.getElementById('orders').innerHTML = '<div class="loading">⏳ Загрузка заказов...</div>';
+            if (orders.length === 0) {
+                document.getElementById('orders').innerHTML = '<div class="empty-state">📋 У вас пока нет заказов</div>';
+            } else {
+                renderOrders(orders);
+            }
+            // Отправляем запрос в бота для получения актуальных заказов
             sendToBot('get_orders');
         }
 
-        function renderOrders(orders) {
+        function renderOrders(ordersData) {
             const container = document.getElementById('orders');
 
-            if (!orders || orders.length === 0) {
+            if (!ordersData || ordersData.length === 0) {
                 container.innerHTML = '<div class="empty-state">📋 У вас пока нет заказов</div>';
                 return;
             }
 
-            container.innerHTML = orders.map(order => {
-                // Определяем класс статуса
+            container.innerHTML = ordersData.map(order => {
                 let statusClass = 'status-pending';
-                if (order.status === 'confirmed') statusClass = 'status-confirmed';
-                else if (order.status === 'completed') statusClass = 'status-completed';
-                else if (order.status === 'cancelled') statusClass = 'status-cancelled';
+                let statusText = order.status_text || '⏳ Ожидает подтверждения';
 
-                // Текст статуса с эмодзи
-                const statusText = order.status_text || {
-                    'pending': '⏳ Ожидает подтверждения',
-                    'confirmed': '✅ Подтверждён',
-                    'completed': '👍 Выполнен',
-                    'cancelled': '❌ Отменён'
-                }[order.status] || order.status;
+                if (order.status === 'confirmed') {
+                    statusClass = 'status-confirmed';
+                    statusText = '✅ Подтверждён';
+                } else if (order.status === 'completed') {
+                    statusClass = 'status-completed';
+                    statusText = '👍 Выполнен';
+                } else if (order.status === 'cancelled') {
+                    statusClass = 'status-cancelled';
+                    statusText = '❌ Отменён';
+                }
 
                 return `
                     <div class="order-card">
@@ -417,7 +496,7 @@
                                 📍 ${order.location}
                             </div>
                             <div class="order-date">
-                                📅 ${order.date || order.created_at || ''}
+                                📅 ${order.created_at || order.date || ''}
                             </div>
                         </div>
 
@@ -450,11 +529,11 @@
             if (page === 'main') {
                 document.getElementById('mainPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[0].classList.add('active');
-                sendToBot('get_products');
+                renderProducts();
             } else if (page === 'cart') {
                 document.getElementById('cartPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[1].classList.add('active');
-                renderCart();
+                loadCart();
             } else if (page === 'orders') {
                 document.getElementById('ordersPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[2].classList.add('active');
@@ -473,8 +552,8 @@
             // Показываем главную страницу
             showPage('main');
 
-            // Загружаем товары
-            sendToBot('get_products');
+            // Обновляем отладочную информацию
+            updateDebugInfo();
         });
 
         // ========== ЭКСПОРТ ФУНКЦИЙ ==========
@@ -485,6 +564,7 @@
         window.updateCart = updateCart;
         window.getLocation = getLocation;
         window.checkout = checkout;
+        window.loadCart = loadCart;
         window.loadOrders = loadOrders;
     </script>
 </body>
