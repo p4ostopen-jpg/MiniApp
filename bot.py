@@ -61,9 +61,13 @@ async def web_app_handler(message: Message):
 
         if action == 'get_products':
             products = await db.get_products()
+            # Отправляем данные обратно в WebApp
             await bot.send_message(
                 user_id,
-                json.dumps(products, ensure_ascii=False)
+                json.dumps({
+                    'type': 'products',
+                    'data': products
+                }, ensure_ascii=False, default=str)
             )
 
         elif action == 'create_order':
@@ -73,129 +77,105 @@ async def web_app_handler(message: Message):
             if not location or not items:
                 await bot.send_message(
                     user_id,
-                    json.dumps({'error': 'Нет адреса или товаров'})
+                    json.dumps({
+                        'type': 'error',
+                        'message': 'Нет адреса или товаров'
+                    })
                 )
                 return
 
+            # Создаём заказ
             order_id = await db.create_order_from_items(user_id, location, items)
 
             if order_id:
+                # Получаем созданный заказ
+                orders = await db.get_user_orders(user_id)
+                current_order = next((o for o in orders if o['id'] == order_id), None)
+
                 # Уведомление продавцу
                 await bot.send_message(
                     SELLER_ID,
-                    f"🆕 НОВЫЙ ЗАКАЗ #{order_id}"
+                    f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
+                    f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
+                    f"📍 {location}\n"
+                    f"💰 Сумма: {sum(item['price'] * item['quantity'] for item in items)}₽\n\n"
+                    f"📦 Товары:\n" +
+                    "\n".join([f"• {item['name']} x{item['quantity']} - {item['price'] * item['quantity']}₽"
+                               for item in items])
                 )
 
-                # Отправляем подтверждение в Mini App
+                # Отправляем подтверждение и обновленные заказы в WebApp
                 await bot.send_message(
                     user_id,
                     json.dumps({
-                        'success': True,
-                        'order_id': order_id,
-                        'message': 'Заказ создан'
-                    })
+                        'type': 'order_created',
+                        'order': current_order,
+                        'message': f'✅ Заказ #{order_id} создан!'
+                    }, ensure_ascii=False, default=str)
                 )
+
+                logger.info(f"✅ Заказ #{order_id} успешно создан")
             else:
                 await bot.send_message(
                     user_id,
-                    json.dumps({'error': 'Ошибка создания заказа'})
+                    json.dumps({
+                        'type': 'error',
+                        'message': 'Ошибка создания заказа'
+                    })
                 )
 
         elif action == 'get_orders':
             orders = await db.get_user_orders(user_id)
-
-            # Форматируем заказы для отображения в Mini App
+            # Форматируем заказы для отображения в приложении
             formatted_orders = []
             for order in orders:
-                # Статус на русском
-                status_text = {
-                    'pending': '⏳ Ожидает подтверждения',
-                    'confirmed': '✅ Подтверждён',
-                    'completed': '👍 Выполнен',
-                    'cancelled': '❌ Отменён'
-                }.get(order['status'], order['status'])
-
-                # Эмодзи для статуса
-                status_emoji = {
-                    'pending': '⏳',
-                    'confirmed': '✅',
-                    'completed': '👍',
-                    'cancelled': '❌'
-                }.get(order['status'], '⏳')
-
                 formatted_order = {
                     'id': order['id'],
-                    'date': order['created_at'][:16],
+                    'created_at': order['created_at'],
                     'location': order['location'],
                     'total': order['total'],
                     'status': order['status'],
-                    'status_text': status_text,
-                    'status_emoji': status_emoji,
-                    'items': []
+                    'status_text': {
+                        'pending': '⏳ Ждет подтверждения',
+                        'confirmed': '✅ Подтверждено',
+                        'completed': '👍 Выполнен',
+                        'cancelled': '❌ Отменён'
+                    }.get(order['status'], order['status']),
+                    'items': [
+                        {
+                            'name': item['product_name'],
+                            'quantity': item['quantity'],
+                            'price': item['price'],
+                            'total': item['price'] * item['quantity']
+                        }
+                        for item in order['items']
+                    ]
                 }
-
-                for item in order['items']:
-                    formatted_order['items'].append({
-                        'name': item['product_name'],
-                        'quantity': item['quantity'],
-                        'price': item['price'],
-                        'total': item['price'] * item['quantity']
-                    })
-
                 formatted_orders.append(formatted_order)
 
-            # Отправляем JSON с заказами в Mini App
             await bot.send_message(
                 user_id,
-                json.dumps(formatted_orders, ensure_ascii=False)
+                json.dumps({
+                    'type': 'orders',
+                    'data': formatted_orders
+                }, ensure_ascii=False, default=str)
             )
 
     except Exception as e:
         logger.error(f"❌ Ошибка: {e}")
         await bot.send_message(
             message.from_user.id,
-            json.dumps({'error': str(e)})
+            json.dumps({
+                'type': 'error',
+                'message': str(e)
+            })
         )
+
 
 @dp.callback_query(F.data == "my_orders")
 async def my_orders(callback: CallbackQuery):
-    orders = await db.get_user_orders(callback.from_user.id)
-
-    if not orders:
-        await callback.message.answer("📋 У вас пока нет заказов")
-        await callback.answer()
-        return
-
-    for order in orders:
-        status_emoji = {
-            'pending': '⏳',
-            'confirmed': '✅',
-            'completed': '👍',
-            'cancelled': '❌'
-        }.get(order['status'], '⏳')
-
-        status_text = {
-            'pending': 'Ожидает подтверждения',
-            'confirmed': 'Подтверждён',
-            'completed': 'Выполнен',
-            'cancelled': 'Отменён'
-        }.get(order['status'], order['status'])
-
-        text = f"{status_emoji} ЗАКАЗ #{order['id']}\n"
-        text += f"📅 {order['created_at'][:16]}\n"
-        text += f"📍 {order['location']}\n"
-        text += f"💰 Сумма: {order['total']}₽\n"
-        text += f"📊 Статус: {status_text}\n\n"
-        text += "📦 Товары:\n"
-
-        for item in order['items']:
-            text += f"• {item['product_name']} x{item['quantity']} - {item['price']}₽/шт\n"
-
-        text += "─" * 30 + "\n"
-
-        await callback.message.answer(text)
-
-    await callback.answer()
+    # Этот метод больше не используется, оставляем для совместимости
+    await callback.answer("📱 Откройте магазин через кнопку '🍦 Открыть магазин'", show_alert=True)
 
 
 @dp.callback_query(F.data == "admin_panel")
