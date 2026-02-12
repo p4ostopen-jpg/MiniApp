@@ -999,11 +999,11 @@
         let catalog = [
             {
                 id: 1,
-                name: "Ванильное",
+                name: "Ананас",
                 price: 100,
                 stock: 50,
                 image: "🍦",
-                image_url: IMAGE_BASE_URL + "vanilla.png"
+                image_url: IMAGE_BASE_URL + "pineapple.png"
             },
             {
                 id: 2,
@@ -1015,7 +1015,7 @@
             },
             {
                 id: 3,
-                name: "Клубничное",
+                name: "Клубничная",
                 price: 110,
                 stock: 30,
                 image: "🍓",
@@ -1252,7 +1252,7 @@
                          onerror="this.style.display='none'; this.parentElement.innerHTML='${product.image}';">
                 </div>
                 <div class="product-name">${product.name}</div>
-                <div class="product-price">${product.price} ₽</div>
+                <div class="product-price">${product.price} €</div>
                 <div class="product-stock">
                     ${isAvailable ? `✅ В наличии: ${product.stock} шт.` : '❌ Нет в наличии'}
                 </div>
