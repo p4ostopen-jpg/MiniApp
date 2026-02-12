@@ -43,15 +43,72 @@
             font-size: 16px;
         }
 
-        .nav-menu {
+        /* Навигация - плавающая панель */
+.nav-menu {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    background: white;
+    padding: 8px;
+    border-radius: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    flex-wrap: wrap;
+    position: sticky;
+    top: 16px;
+    z-index: 99;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255,255,255,0.5);
+}
+
+        /* Контейнер для контента, чтобы не прилипало к краям */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding-bottom: 90px; /* Отступ для FAB кнопки */
+        }
+
+        /* FAB кнопка корзины */
+        .cart-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
+            border-radius: 32px;
             display: flex;
-            gap: 12px;
-            margin-bottom: 20px;
-            background: white;
-            padding: 8px;
-            border-radius: 30px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3);
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            z-index: 100;
+        }
+
+        .cart-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 28px rgba(74, 111, 165, 0.4);
+        }
+
+        /* Адаптация для мобильных устройств */
+        @media (max-width: 480px) {
+            .nav-menu {
+                top: 12px;
+                margin-left: 8px;
+                margin-right: 8px;
+            }
+
+            .cart-fab {
+                bottom: 16px;
+                right: 16px;
+                width: 56px;
+                height: 56px;
+                font-size: 24px;
+            }
         }
 
         .nav-btn {
@@ -795,7 +852,7 @@
     <div class="container">
         <!-- Навигация -->
         <div class="nav-menu">
-            <button class="nav-btn active" onclick="showPage('main')">🍦 Меню</button>
+            <button class="nav-btn active" onclick="showPage('main')">🔍 Список товара</button>
             <button class="nav-btn" onclick="showPage('cart')">🛒 Корзина</button>
             <button class="nav-btn" onclick="showPage('orders')">📋 Заказы</button>
             <button class="nav-btn admin-btn" onclick="showPage('admin')" id="adminNavBtn" style="display: none;">👨‍💼 Админ</button>
