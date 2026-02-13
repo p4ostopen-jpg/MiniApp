@@ -4,7 +4,6 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import ADMIN_IDS, SELLER_IDS
 from database import Database
-from sync import SyncManager
 import logging
 import json
 
@@ -12,9 +11,7 @@ logger = logging.getLogger(__name__)
 
 router = Router()
 db = Database()
-
-
-# SyncManager будет добавлен позже из bot.py
+sync_manager_instance = None  # Глобальная переменная для SyncManager
 
 
 def set_sync_manager(sync_manager):
@@ -24,6 +21,8 @@ def set_sync_manager(sync_manager):
 
 
 def admin_required(func):
+    """Декоратор для проверки прав администратора"""
+
     async def wrapper(event, *args, **kwargs):
         user_id = event.from_user.id
         if user_id not in ADMIN_IDS:
@@ -39,9 +38,28 @@ def admin_required(func):
     return wrapper
 
 
+def seller_or_admin_required(func):
+    """Декоратор для проверки прав продавца или администратора"""
+
+    async def wrapper(event, *args, **kwargs):
+        user_id = event.from_user.id
+        if user_id not in ADMIN_IDS and user_id not in SELLER_IDS:
+            if isinstance(event, Message):
+                await event.answer("❌ У вас нет прав продавца или администратора")
+            elif isinstance(event, CallbackQuery):
+                await event.answer("❌ Нет доступа", show_alert=True)
+            logger.warning(f"Попытка доступа от пользователя {user_id} (не продавец и не админ)")
+            return
+        logger.info(f"Продавец/админ {user_id} выполнил {func.__name__}")
+        return await func(event, *args, **kwargs)
+
+    return wrapper
+
+
 @router.message(Command("admin"))
 @admin_required
 async def admin_cmd(message: Message):
+    """Полная админ-панель (только для админов)"""
     builder = InlineKeyboardBuilder()
     builder.button(text="📋 Новые заказы", callback_data="admin_new_orders")
     builder.button(text="📜 История заказов", callback_data="admin_all_orders")
@@ -56,16 +74,39 @@ async def admin_cmd(message: Message):
         f"👨‍💼 ПАНЕЛЬ АДМИНИСТРАТОРА\n"
         f"ID: {message.from_user.id}\n"
         f"Имя: {message.from_user.full_name}\n"
-        f"Статус: ✅ Активен\n\n"
+        f"Статус: ✅ Администратор\n\n"
+        f"Выберите действие:",
+        reply_markup=builder.as_markup()
+    )
+
+
+@router.message(Command("seller"))
+@seller_or_admin_required
+async def seller_cmd(message: Message):
+    """Панель продавца (для продавцов и админов)"""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📋 Новые заказы", callback_data="admin_new_orders")
+    builder.button(text="✅ Подтвердить заказ", callback_data="admin_confirm_order")
+    builder.button(text="❌ Отменить заказ", callback_data="admin_cancel_order")
+    builder.button(text="🔄 Синхронизировать", callback_data="admin_sync")
+    builder.adjust(1)
+
+    role = "Администратор" if message.from_user.id in ADMIN_IDS else "Продавец"
+
+    await message.answer(
+        f"👤 ПАНЕЛЬ ПРОДАВЦА\n"
+        f"ID: {message.from_user.id}\n"
+        f"Имя: {message.from_user.full_name}\n"
+        f"Статус: ✅ {role}\n\n"
         f"Выберите действие:",
         reply_markup=builder.as_markup()
     )
 
 
 @router.callback_query(F.data == "admin_sync")
-@admin_required
+@seller_or_admin_required
 async def admin_sync(callback: CallbackQuery):
-    """Ручная синхронизация"""
+    """Ручная синхронизация (доступно админам и продавцам)"""
     await callback.message.edit_text("🔄 Синхронизация данных...")
 
     try:
@@ -97,8 +138,9 @@ async def admin_sync(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == "admin_new_orders")
-@admin_required
+@seller_or_admin_required
 async def admin_new_orders(callback: CallbackQuery):
+    """Просмотр новых заказов (доступно админам и продавцам)"""
     orders = await db.get_all_orders()
     pending_orders = [o for o in orders if o['status'] == 'pending']
 
@@ -126,6 +168,7 @@ async def admin_new_orders(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_all_orders")
 @admin_required
 async def admin_all_orders(callback: CallbackQuery):
+    """История всех заказов (только для админов)"""
     orders = await db.get_all_orders()
 
     if not orders:
@@ -154,8 +197,9 @@ async def admin_all_orders(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == "admin_confirm_order")
-@admin_required
+@seller_or_admin_required
 async def admin_confirm_order_start(callback: CallbackQuery):
+    """Выбор заказа для подтверждения (доступно админам и продавцам)"""
     orders = await db.get_all_orders()
     pending_orders = [o for o in orders if o['status'] == 'pending']
 
@@ -180,8 +224,9 @@ async def admin_confirm_order_start(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("confirm_"))
-@admin_required
+@seller_or_admin_required
 async def admin_confirm_order(callback: CallbackQuery):
+    """Подтверждение заказа (доступно админам и продавцам)"""
     order_id = int(callback.data.split("_")[1])
     order = await db.update_order_status(order_id, 'confirmed')
 
@@ -201,7 +246,7 @@ async def admin_confirm_order(callback: CallbackQuery):
 
         # Синхронизация с админ-панелью
         try:
-            if 'sync_manager_instance' in globals():
+            if sync_manager_instance:
                 await sync_manager_instance.notify_order_update(order_id, 'confirmed', order)
         except Exception as e:
             logger.error(f"❌ Ошибка синхронизации: {e}")
@@ -211,8 +256,9 @@ async def admin_confirm_order(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == "admin_cancel_order")
-@admin_required
+@seller_or_admin_required
 async def admin_cancel_order_start(callback: CallbackQuery):
+    """Выбор заказа для отмены (доступно админам и продавцам)"""
     orders = await db.get_all_orders()
     active_orders = [o for o in orders if o['status'] in ['pending', 'confirmed']]
 
@@ -237,8 +283,9 @@ async def admin_cancel_order_start(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("cancel_"))
-@admin_required
+@seller_or_admin_required
 async def admin_cancel_order(callback: CallbackQuery):
+    """Отмена заказа (доступно админам и продавцам)"""
     order_id = int(callback.data.split("_")[1])
     order = await db.update_order_status(order_id, 'cancelled')
 
@@ -256,7 +303,7 @@ async def admin_cancel_order(callback: CallbackQuery):
 
         # Синхронизация с админ-панелью
         try:
-            if 'sync_manager_instance' in globals():
+            if sync_manager_instance:
                 await sync_manager_instance.notify_order_update(order_id, 'cancelled', order)
         except Exception as e:
             logger.error(f"❌ Ошибка синхронизации: {e}")
@@ -268,6 +315,7 @@ async def admin_cancel_order(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_restore_order")
 @admin_required
 async def admin_restore_order_start(callback: CallbackQuery):
+    """Выбор заказа для восстановления (только для админов)"""
     orders = await db.get_all_orders()
     cancelled_orders = [o for o in orders if o['status'] == 'cancelled']
 
@@ -294,6 +342,7 @@ async def admin_restore_order_start(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("restore_"))
 @admin_required
 async def admin_restore_order(callback: CallbackQuery):
+    """Восстановление заказа (только для админов)"""
     order_id = int(callback.data.split("_")[1])
     order = await db.update_order_status(order_id, 'pending')
 
@@ -311,7 +360,7 @@ async def admin_restore_order(callback: CallbackQuery):
 
         # Синхронизация с админ-панелью
         try:
-            if 'sync_manager_instance' in globals():
+            if sync_manager_instance:
                 await sync_manager_instance.notify_order_update(order_id, 'pending', order)
         except Exception as e:
             logger.error(f"❌ Ошибка синхронизации: {e}")
@@ -323,6 +372,7 @@ async def admin_restore_order(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_products")
 @admin_required
 async def admin_products(callback: CallbackQuery):
+    """Управление товарами (только для админов)"""
     products = await db.get_products()
 
     if not products:
