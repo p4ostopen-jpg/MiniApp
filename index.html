@@ -1047,6 +1047,167 @@
             is_admin: ADMIN_IDS.includes(tg.initDataUnsafe?.user?.id || 0)
         };
 
+        // Добавьте в начало скрипта после инициализации tg:
+
+        // ==================== СИНХРОНИЗАЦИЯ ====================
+
+        // Функция для обновления товаров с сервера
+        async function syncProductsFromServer() {
+            showToast('🔄 Синхронизация товаров...');
+            tg.sendData(JSON.stringify({action: 'get_products'}));
+        }
+
+        // Функция для обновления заказов с сервера (для админа)
+        async function syncAllOrdersFromServer() {
+            if (!currentUser.is_admin) return;
+            showToast('🔄 Синхронизация заказов...');
+            tg.sendData(JSON.stringify({action: 'get_all_orders'}));
+        }
+
+        // Периодическая синхронизация (каждые 30 минут)
+        setInterval(() => {
+            console.log('🔄 Периодическая синхронизация...');
+            syncProductsFromServer();
+            if (currentUser.is_admin) {
+                syncAllOrdersFromServer();
+            }
+        }, 1800000); // 30 минут = 1800000 миллисекунд
+
+        // Обработка входящих сообщений от бота
+        tg.onEvent('message', (event) => {
+            try {
+                const response = JSON.parse(event.data);
+                console.log('📦 Получено сообщение от бота:', response);
+
+                switch (response.type) {
+                    case 'products':
+                        // Обновляем каталог товаров
+                        if (response.data && Array.isArray(response.data)) {
+                            catalog = response.data;
+                            saveCatalog();
+                            renderProducts();
+                            showToast('✅ Товары обновлены');
+                        }
+                        break;
+
+                    case 'orders':
+                        // Обновляем заказы пользователя
+                        if (response.data && Array.isArray(response.data)) {
+                            orders = response.data;
+                            saveOrders();
+                            if (document.getElementById('ordersPage').style.display === 'block') {
+                                renderOrders();
+                            }
+                        }
+                        break;
+
+                    case 'all_orders':
+                        // Обновляем все заказы (для админа)
+                        if (response.data && Array.isArray(response.data)) {
+                            allOrders = response.data;
+                            saveAllOrders();
+                            if (document.getElementById('adminPage').style.display === 'block') {
+                                renderAdminPanel();
+                            }
+                        }
+                        break;
+
+                    case 'order_created':
+                        // Новый заказ создан
+                        if (response.data) {
+                            // Добавляем в список всех заказов
+                            allOrders = [response.data, ...allOrders];
+                            saveAllOrders();
+
+                            // Добавляем в заказы пользователя если это его заказ
+                            if (response.data.user_id === currentUser.id) {
+                                orders = [response.data, ...orders];
+                                saveOrders();
+                                if (document.getElementById('ordersPage').style.display === 'block') {
+                                    renderOrders();
+                                }
+                            }
+
+                            showToast('✅ Заказ создан');
+                        }
+                        break;
+
+                    case 'order_status_update':
+                        // Обновление статуса заказа
+                        if (response.data) {
+                            const {id, status, order} = response.data;
+
+                            // Обновляем в списке всех заказов
+                            const orderIndex = allOrders.findIndex(o => o.id === id);
+                            if (orderIndex !== -1) {
+                                allOrders[orderIndex] = order;
+                                saveAllOrders();
+                            }
+
+                            // Обновляем в заказах пользователя
+                            const userOrderIndex = orders.findIndex(o => o.id === id);
+                            if (userOrderIndex !== -1) {
+                                orders[userOrderIndex] = order;
+                                saveOrders();
+                            }
+
+                            // Обновляем отображение
+                            if (document.getElementById('ordersPage').style.display === 'block') {
+                                renderOrders();
+                            }
+                            if (document.getElementById('adminPage').style.display === 'block') {
+                                renderAdminPanel();
+                            }
+
+                            showToast(`📊 Статус заказа #${id} обновлен`);
+                        }
+                        break;
+
+                    case 'sync_products':
+                        // Массовая синхронизация товаров
+                        if (response.data && Array.isArray(response.data)) {
+                            catalog = response.data;
+                            saveCatalog();
+                            renderProducts();
+                            showToast('✅ Товары синхронизированы');
+                        }
+                        break;
+
+                    case 'sync_orders':
+                        // Массовая синхронизация заказов (для админа)
+                        if (response.data && Array.isArray(response.data)) {
+                            allOrders = response.data;
+                            saveAllOrders();
+                            if (document.getElementById('adminPage').style.display === 'block') {
+                                renderAdminPanel();
+                            }
+                        }
+                        break;
+
+                    case 'new_order':
+                        // Новый заказ для админа
+                        if (response.data) {
+                            allOrders = [response.data, ...allOrders];
+                            saveAllOrders();
+                            if (document.getElementById('adminPage').style.display === 'block') {
+                                renderAdminPanel();
+                            }
+                            showToast('🆕 Новый заказ!');
+                        }
+                        break;
+
+                    case 'error':
+                        showToast(`❌ ${response.message}`, true);
+                        break;
+
+                    default:
+                        console.log('Неизвестный тип:', response.type);
+                }
+            } catch (e) {
+                console.error('Ошибка обработки сообщения:', e);
+            }
+        });
+
         // Дебаг информация
         console.log('Current user:', currentUser);
         console.log('Is admin:', currentUser.is_admin);

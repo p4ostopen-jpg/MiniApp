@@ -150,15 +150,17 @@ class Database:
             result = []
             for p in products:
                 p_dict = dict(p)
+                # Маппинг русских названий на английские для файлов
                 name_map = {
-                    'Ванильное': 'vanilla',
+                    'Ананас': 'pineapple',
                     'Шоколадное': 'chocolate',
-                    'Клубничное': 'strawberry',
+                    'Клубничная': 'strawberry',
                     'Фисташковое': 'pistachio',
                     'Карамельное': 'caramel'
                 }
                 eng_name = name_map.get(p_dict['name'], 'ice-cream')
-                p_dict['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.jpg"
+                p_dict[
+                    'image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.png"  # Исправлено .jpg -> .png
                 p_dict['stock'] = p_dict['quantity']
                 result.append(p_dict)
             return result

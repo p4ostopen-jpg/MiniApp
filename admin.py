@@ -2,14 +2,25 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import ADMIN_IDS, SELLER_ID
+from config import ADMIN_IDS, SELLER_IDS
 from database import Database
+from sync import SyncManager
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
 router = Router()
 db = Database()
+
+
+# SyncManager будет добавлен позже из bot.py
+
+
+def set_sync_manager(sync_manager):
+    """Функция для установки SyncManager из bot.py"""
+    global sync_manager_instance
+    sync_manager_instance = sync_manager
 
 
 def admin_required(func):
@@ -38,6 +49,7 @@ async def admin_cmd(message: Message):
     builder.button(text="✅ Подтвердить заказ", callback_data="admin_confirm_order")
     builder.button(text="❌ Отменить заказ", callback_data="admin_cancel_order")
     builder.button(text="↩️ Восстановить заказ", callback_data="admin_restore_order")
+    builder.button(text="🔄 Синхронизировать", callback_data="admin_sync")
     builder.adjust(1)
 
     await message.answer(
@@ -48,6 +60,40 @@ async def admin_cmd(message: Message):
         f"Выберите действие:",
         reply_markup=builder.as_markup()
     )
+
+
+@router.callback_query(F.data == "admin_sync")
+@admin_required
+async def admin_sync(callback: CallbackQuery):
+    """Ручная синхронизация"""
+    await callback.message.edit_text("🔄 Синхронизация данных...")
+
+    try:
+        # Синхронизируем товары
+        products = await db.get_products()
+        await callback.bot.send_message(
+            callback.from_user.id,
+            json.dumps({
+                'type': 'sync_products',
+                'data': products
+            }, ensure_ascii=False, default=str)
+        )
+
+        # Синхронизируем заказы
+        orders = await db.get_all_orders()
+        await callback.bot.send_message(
+            callback.from_user.id,
+            json.dumps({
+                'type': 'sync_orders',
+                'data': orders
+            }, ensure_ascii=False, default=str)
+        )
+
+        await callback.message.edit_text("✅ Синхронизация завершена")
+    except Exception as e:
+        await callback.message.edit_text(f"❌ Ошибка: {e}")
+
+    await callback.answer()
 
 
 @router.callback_query(F.data == "admin_new_orders")
@@ -64,13 +110,13 @@ async def admin_new_orders(callback: CallbackQuery):
     for order in pending_orders[:5]:
         text = f"⏳ НОВЫЙ ЗАКАЗ #{order['id']}\n"
         text += f"👤 {order.get('first_name', 'Неизвестно')} (@{order.get('username', '')})\n"
-        text += f"💰 {order['total']}₽\n"
+        text += f"💰 {order['total']}€\n"
         text += f"📍 {order['location']}\n"
         text += f"📅 {order['created_at'][:16]}\n\n"
         text += "📦 Товары:\n"
 
         for item in order['items']:
-            text += f"  • {item['product_name']} x{item['quantity']} - {item['price'] * item['quantity']}₽\n"
+            text += f"  • {item['product_name']} x{item['quantity']} - {item['price'] * item['quantity']}€\n"
 
         await callback.message.answer(text)
 
@@ -97,7 +143,7 @@ async def admin_all_orders(callback: CallbackQuery):
 
         text = f"{status_emoji} ЗАКАЗ #{order['id']}\n"
         text += f"👤 {order.get('first_name', 'Неизвестно')}\n"
-        text += f"💰 {order['total']}₽\n"
+        text += f"💰 {order['total']}€\n"
         text += f"📍 {order['location']}\n"
         text += f"📅 {order['created_at'][:16]}\n"
         text += f"📊 Статус: {order['status']}\n"
@@ -121,7 +167,7 @@ async def admin_confirm_order_start(callback: CallbackQuery):
     builder = InlineKeyboardBuilder()
     for order in pending_orders[:10]:
         builder.button(
-            text=f"✅ #{order['id']} - {order['total']}₽",
+            text=f"✅ #{order['id']} - {order['total']}€",
             callback_data=f"confirm_{order['id']}"
         )
     builder.adjust(1)
@@ -140,17 +186,25 @@ async def admin_confirm_order(callback: CallbackQuery):
     order = await db.update_order_status(order_id, 'confirmed')
 
     if order:
+        # Уведомление пользователю
         try:
             await callback.bot.send_message(
                 order['user_id'],
                 f"✅ Ваш заказ #{order_id} ПОДТВЕРЖДЁН!\n\n"
                 f"📍 Адрес доставки: {order['location']}\n"
-                f"💰 Сумма: {order['total']}₽\n\n"
+                f"💰 Сумма: {order['total']}€\n\n"
                 f"Спасибо за заказ! ❤️"
             )
             logger.info(f"Уведомление отправлено пользователю {order['user_id']}")
         except Exception as e:
             logger.error(f"❌ Не удалось отправить уведомление: {e}")
+
+        # Синхронизация с админ-панелью
+        try:
+            if 'sync_manager_instance' in globals():
+                await sync_manager_instance.notify_order_update(order_id, 'confirmed', order)
+        except Exception as e:
+            logger.error(f"❌ Ошибка синхронизации: {e}")
 
     await callback.message.edit_text(f"✅ Заказ #{order_id} подтверждён")
     await callback.answer()
@@ -170,7 +224,7 @@ async def admin_cancel_order_start(callback: CallbackQuery):
     builder = InlineKeyboardBuilder()
     for order in active_orders[:10]:
         builder.button(
-            text=f"❌ #{order['id']} - {order['total']}₽",
+            text=f"❌ #{order['id']} - {order['total']}€",
             callback_data=f"cancel_{order['id']}"
         )
     builder.adjust(1)
@@ -189,6 +243,7 @@ async def admin_cancel_order(callback: CallbackQuery):
     order = await db.update_order_status(order_id, 'cancelled')
 
     if order:
+        # Уведомление пользователю
         try:
             await callback.bot.send_message(
                 order['user_id'],
@@ -198,6 +253,13 @@ async def admin_cancel_order(callback: CallbackQuery):
             logger.info(f"Уведомление об отмене отправлено пользователю {order['user_id']}")
         except Exception as e:
             logger.error(f"❌ Не удалось отправить уведомление: {e}")
+
+        # Синхронизация с админ-панелью
+        try:
+            if 'sync_manager_instance' in globals():
+                await sync_manager_instance.notify_order_update(order_id, 'cancelled', order)
+        except Exception as e:
+            logger.error(f"❌ Ошибка синхронизации: {e}")
 
     await callback.message.edit_text(f"❌ Заказ #{order_id} отменён")
     await callback.answer()
@@ -217,7 +279,7 @@ async def admin_restore_order_start(callback: CallbackQuery):
     builder = InlineKeyboardBuilder()
     for order in cancelled_orders[:10]:
         builder.button(
-            text=f"↩️ #{order['id']} - {order['total']}₽",
+            text=f"↩️ #{order['id']} - {order['total']}€",
             callback_data=f"restore_{order['id']}"
         )
     builder.adjust(1)
@@ -236,6 +298,7 @@ async def admin_restore_order(callback: CallbackQuery):
     order = await db.update_order_status(order_id, 'pending')
 
     if order:
+        # Уведомление пользователю
         try:
             await callback.bot.send_message(
                 order['user_id'],
@@ -245,6 +308,13 @@ async def admin_restore_order(callback: CallbackQuery):
             logger.info(f"Уведомление о восстановлении отправлено пользователю {order['user_id']}")
         except Exception as e:
             logger.error(f"❌ Не удалось отправить уведомление: {e}")
+
+        # Синхронизация с админ-панелью
+        try:
+            if 'sync_manager_instance' in globals():
+                await sync_manager_instance.notify_order_update(order_id, 'pending', order)
+        except Exception as e:
+            logger.error(f"❌ Ошибка синхронизации: {e}")
 
     await callback.message.edit_text(f"🔄 Заказ #{order_id} восстановлен")
     await callback.answer()
@@ -263,7 +333,7 @@ async def admin_products(callback: CallbackQuery):
     text = "📦 ТОВАРЫ В НАЛИЧИИ:\n\n"
     for p in products:
         text += f"🆔 {p['id']}: {p['name']}\n"
-        text += f"   💰 {p['price']}₽ | 📦 {p['quantity']} шт.\n\n"
+        text += f"   💰 {p['price']}€ | 📦 {p['quantity']} шт.\n\n"
 
     await callback.message.edit_text(text)
     await callback.answer()
