@@ -1,13 +1,12 @@
 import asyncio
 import logging
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from database import Database
-from config import ADMIN_IDS, SELLER_IDS  # Изменено
+from config import ADMIN_IDS, SELLER_IDS
 from aiogram import Bot
 
 logger = logging.getLogger(__name__)
-sync_manager_instance = None
 
 
 class SyncManager:
@@ -17,39 +16,34 @@ class SyncManager:
         self.last_sync = {}
 
     async def broadcast_to_admins(self, data: dict):
-        """Отправляет данные всем админам"""
+        """Отправляет данные всем админам ТОЛЬКО через WebApp"""
         for admin_id in ADMIN_IDS:
             try:
+                # Отправляем как ответ на WebApp данные, а не как обычное сообщение
                 await self.bot.send_message(
                     admin_id,
                     json.dumps(data, ensure_ascii=False, default=str)
                 )
-                logger.info(f"✅ Данные отправлены админу {admin_id}")
+                logger.info(f"✅ Данные отправлены админу {admin_id} в WebApp")
             except Exception as e:
                 logger.error(f"❌ Ошибка отправки админу {admin_id}: {e}")
 
     async def broadcast_to_sellers(self, data: dict):
-        """Отправляет данные всем продавцам"""
+        """Отправляет данные всем продавцам ТОЛЬКО через WebApp"""
         for seller_id in SELLER_IDS:
             try:
                 await self.bot.send_message(
                     seller_id,
                     json.dumps(data, ensure_ascii=False, default=str)
                 )
-                logger.info(f"✅ Данные отправлены продавцу {seller_id}")
+                logger.info(f"✅ Данные отправлены продавцу {seller_id} в WebApp")
             except Exception as e:
                 logger.error(f"❌ Ошибка отправки продавцу {seller_id}: {e}")
 
     async def broadcast_to_all_staff(self, data: dict):
-        """Отправляет данные всем админам и продавцам"""
+        """Отправляет данные всем админам и продавцам через WebApp"""
         await self.broadcast_to_admins(data)
         await self.broadcast_to_sellers(data)
-
-    async def broadcast_to_all_users(self, data: dict):
-        """Отправляет данные всем пользователям (у кого есть активный чат с ботом)"""
-        # В реальном проекте нужно хранить список активных пользователей
-        # Но для простоты будем отправлять только сотрудникам
-        await self.broadcast_to_all_staff(data)
 
     async def sync_products_to_clients(self):
         """Синхронизирует товары со всеми клиентами"""
@@ -61,7 +55,7 @@ class SyncManager:
                 'timestamp': datetime.now().isoformat()
             }
 
-            await self.broadcast_to_all_users(sync_data)
+            await self.broadcast_to_all_staff(sync_data)
             logger.info(f"✅ Товары синхронизированы: {len(products)} шт.")
 
         except Exception as e:
@@ -110,13 +104,12 @@ class SyncManager:
                 logger.error(f"❌ Ошибка в периодической синхронизации: {e}")
 
             # Ждем 30 минут
-            await asyncio.sleep(1800)  # 30 минут = 1800 секунд
+            await asyncio.sleep(1800)
 
     async def notify_order_update(self, order_id: int, status: str, order_data: dict = None):
         """Уведомляет об обновлении статуса заказа"""
         try:
             if not order_data:
-                # Получаем данные заказа из БД
                 orders = await self.db.get_all_orders()
                 order_data = next((o for o in orders if o['id'] == order_id), None)
 
@@ -131,10 +124,10 @@ class SyncManager:
                     'timestamp': datetime.now().isoformat()
                 }
 
-                # Отправляем всем сотрудникам
+                # Отправляем всем сотрудникам через WebApp
                 await self.broadcast_to_all_staff(sync_data)
 
-                # Отправляем конкретному пользователю
+                # Отправляем конкретному пользователю через WebApp
                 try:
                     await self.bot.send_message(
                         order_data['user_id'],
@@ -147,10 +140,10 @@ class SyncManager:
                             }
                         }, ensure_ascii=False, default=str)
                     )
+                    logger.info(
+                        f"✅ Обновление статуса заказа #{order_id} отправлено пользователю {order_data['user_id']} в WebApp")
                 except Exception as e:
                     logger.error(f"❌ Ошибка отправки пользователю: {e}")
-
-                logger.info(f"✅ Обновление статуса заказа #{order_id} отправлено")
 
         except Exception as e:
             logger.error(f"❌ Ошибка уведомления об обновлении заказа: {e}")

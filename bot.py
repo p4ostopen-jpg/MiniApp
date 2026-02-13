@@ -118,68 +118,62 @@ async def web_app_handler(message: Message):
             else:
                 logger.warning(f"Пользователь {user_id} пытался получить все заказы без прав")
 
+
+
         elif action == 'create_order':
-            # Любой пользователь может создать заказ
+
             order_data = data.get('order', {})
 
             # Сохраняем заказ в базу данных
+
             order_id = await db.create_order_from_items(
+
                 user_id,
+
                 order_data.get('location'),
+
                 order_data.get('items', [])
+
             )
 
             if order_id:
+
                 # Получаем полные данные заказа
+
                 orders = await db.get_user_orders(user_id)
+
                 created_order = next((o for o in orders if o['id'] == order_id), None)
 
                 if created_order:
-                    # Отправляем подтверждение пользователю
+
+                    # Отправляем подтверждение пользователю (WebApp)
+
                     await bot.send_message(
+
                         user_id,
+
                         json.dumps({
+
                             'type': 'order_created',
+
                             'data': created_order
+
                         }, ensure_ascii=False, default=str)
+
                     )
 
-                    # Формируем сообщение для уведомления
-                    order_text = (
-                        f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
-                        f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
-                        f"📍 {created_order['location']}\n"
-                        f"💰 Сумма: {created_order['total']}€\n\n"
-                        f"📦 Товары:\n"
-                    )
+                    # Отправляем данные для синхронизации всем сотрудникам (ОДИН РАЗ)
 
-                    for item in created_order['items']:
-                        order_text += f"• {item['product_name']} x{item['quantity']} - {item['price'] * item['quantity']}€\n"
+                    # Функция sync_orders_to_admin сама отправит всем админам и продавцам
 
-                    # Отправляем всем админам и продавцам
-                    all_staff_ids = list(set(ADMIN_IDS + SELLER_IDS))  # Объединяем и убираем дубликаты
-                    for staff_id in all_staff_ids:
-                        if staff_id != user_id:  # Не отправляем самому себе
-                            try:
-                                await bot.send_message(staff_id, order_text)
-                                # Также отправляем данные для синхронизации в Mini App
-                                await sync_manager.sync_orders_to_admin(created_order)
-                            except Exception as e:
-                                logger.error(f"Ошибка отправки сотруднику {staff_id}: {e}")
+                    await sync_manager.sync_orders_to_admin(created_order)
 
                     logger.info(f"✅ Заказ #{order_id} успешно создан")
-                else:
-                    logger.error("❌ Ошибка получения созданного заказа")
-            else:
-                await bot.send_message(
-                    user_id,
-                    json.dumps({
-                        'type': 'error',
-                        'message': 'Ошибка создания заказа'
-                    })
-                )
-                logger.error("❌ Ошибка создания заказа")
 
+                else:
+
+                    logger.error("❌ Ошибка получения созданного заказа")
+                    
     except json.JSONDecodeError as e:
         logger.error(f"❌ Ошибка парсинга JSON: {e}")
     except Exception as e:
