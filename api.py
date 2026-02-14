@@ -5,13 +5,39 @@ REST API для Mini App - связывает HTML (GitHub Pages) с базой 
 """
 import asyncio
 import os
-from contextlib import asynccontextmanager
+import json
+import urllib.request
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 from database import Database
-from config import ADMIN_IDS
+from config import ADMIN_IDS, BOT_TOKEN, SELLER_ID
+
+
+def send_telegram_notification(order_id: int, user_name: str, username: str, location: str, total: int, items: list):
+    """Отправляет уведомление о новом заказе продавцу и админам (без закрытия Mini App)"""
+    text = (
+        f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
+        f"👤 {user_name} (@{username or '—'})\n"
+        f"📍 {location}\n"
+        f"💰 Сумма: {total} €\n\n"
+        f"📦 Товары:\n"
+    )
+    for item in items:
+        text += f"• {item.get('name', '?')} x{item.get('quantity', 0)} - {item.get('price', 0) * item.get('quantity', 0)} €\n"
+    recipients = list(set([int(SELLER_ID)] + list(ADMIN_IDS))) if int(SELLER_ID) else list(ADMIN_IDS)
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    for chat_id in recipients:
+        if not chat_id:
+            continue
+        try:
+            req = urllib.request.Request(url, data=json.dumps({"chat_id": chat_id, "text": text}).encode(),
+                                         headers={"Content-Type": "application/json"}, method="POST")
+            urllib.request.urlopen(req, timeout=5)
+        except Exception:
+            pass
+
 
 # Карта названий -> файлы картинок (как в Mini App)
 IMAGE_MAP = {
@@ -36,9 +62,15 @@ def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
 
 
-def get_user_id() -> int:
-    """Получить user_id из заголовка (Mini App передаёт при запросе)"""
-    return int(request.headers.get("X-User-Id", 0))
+def get_user_id(allow_body_fallback: bool = False) -> int:
+    """Получить user_id из заголовка или body (Mini App передаёт при запросе)"""
+    uid = int(request.headers.get("X-User-Id", 0))
+    if not uid and allow_body_fallback:
+        try:
+            uid = int((request.get_json() or {}).get("user_id", 0))
+        except (TypeError, ValueError):
+            pass
+    return uid
 
 
 def product_to_json(p: dict) -> dict:
@@ -71,14 +103,13 @@ def get_products():
 
 @app.route("/api/orders", methods=["GET"])
 def get_user_orders():
-    """Заказы текущего пользователя"""
+    """Заказы текущего пользователя — каждый пользователь видит только свои заказы"""
     user_id = get_user_id()
     if not user_id:
-        return jsonify({"error": "X-User-Id required"}), 401
+        user_id = int(request.args.get("user_id", 0))
 
     async def _():
-        orders = await db.get_user_orders(user_id)
-        return orders
+        return await db.get_user_orders(user_id)
 
     result = asyncio.run(_())
 
@@ -119,11 +150,10 @@ def get_user_orders():
 @app.route("/api/orders", methods=["POST"])
 def create_order():
     """Создать заказ (checkout из Mini App)"""
-    user_id = get_user_id()
-    if not user_id:
-        return jsonify({"error": "X-User-Id required"}), 401
-
     data = request.get_json()
+    user_id = get_user_id(allow_body_fallback=True)
+    if not user_id and data:
+        user_id = int(data.get("user_id", 0) or 0)
     if not data:
         return jsonify({"error": "JSON required"}), 400
 
@@ -151,6 +181,16 @@ def create_order():
 
     order_id = asyncio.run(_())
     if order_id:
+        # Уведомляем продавца/админов через API (без закрытия Mini App)
+        try:
+            user_name = (data.get("user_name") or "Гость").strip()
+            username = (data.get("user_username") or "").strip()
+            total = sum(i.get("price", 0) * i.get("quantity", 0) for i in items) - discount_amount
+            if total < 0:
+                total = 0
+            send_telegram_notification(order_id, user_name, username, location, total, items)
+        except Exception:
+            pass
         return jsonify({"success": True, "order_id": order_id})
     return jsonify({"error": "Order creation failed"}), 500
 

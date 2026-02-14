@@ -1006,7 +1006,9 @@
         <div id="ordersPage" style="display:none;">
             <div class="header">
                 <h1>📋 Мои заказы</h1>
+                <p>Только ваши заказы и их статусы</p>
             </div>
+            <div class="pull-refresh-hint" onclick="loadOrdersFromAPI(); showToast('Обновлено')" style="cursor:pointer;">↻ Обновить</div>
             <div id="orders"></div>
         </div>
 
@@ -1307,13 +1309,14 @@
         }
 
         async function loadOrdersFromAPI() {
-            if (!currentUser.id) return;
             try {
-                orders = await apiRequest('GET', '/api/orders');
+                orders = await apiRequest('GET', '/api/orders?user_id=' + currentUser.id);
                 renderOrders();
                 return true;
             } catch (e) {
                 console.error('Ошибка загрузки заказов:', e);
+                orders = [];
+                renderOrders();
                 showToast('❌ Не удалось загрузить заказы', true);
                 return false;
             }
@@ -1633,6 +1636,9 @@
             }
 
             const orderPayload = {
+                user_id: currentUser.id,
+                user_name: currentUser.first_name,
+                user_username: currentUser.username,
                 location,
                 items: cart.map(i => ({
                     id: i.id,
@@ -1652,18 +1658,7 @@
                 const result = await apiRequest('POST', '/api/orders', orderPayload);
                 if (!result.success) throw new Error('Order failed');
 
-                // Уведомляем бота (для сообщения продавцу/админам)
-                tg.sendData(JSON.stringify({
-                    action: 'create_order',
-                    order: {
-                        id: result.order_id,
-                        user_id: currentUser.id,
-                        user_name: currentUser.first_name,
-                        location: location,
-                        total: cart.reduce((sum, i) => sum + (i.price * i.quantity), 0),
-                        items: orderPayload.items
-                    }
-                }));
+                // Уведомления продавцу/админам отправляет API (tg.sendData закрывал бы Mini App)
 
                 saveCurrentAddress();
                 cart = [];
@@ -1687,9 +1682,10 @@
 
         function renderOrders() {
             const container = document.getElementById('orders');
+            if (!container) return;
 
             if (orders.length === 0) {
-                container.innerHTML = '<div class="empty-state">📋 У вас пока нет заказов</div>';
+                container.innerHTML = '<div class="empty-state">📋 У вас пока нет заказов<br><small>Ваши заказы появятся здесь после оформления</small></div>';
                 return;
             }
 
@@ -2120,7 +2116,7 @@
             } else if (page === 'orders') {
                 document.getElementById('ordersPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[2].classList.add('active');
-                renderOrders();
+                loadOrdersFromAPI();
             } else if (page === 'admin') {
                 if (currentUser.is_admin) {
                     document.getElementById('adminPage').style.display = 'block';
