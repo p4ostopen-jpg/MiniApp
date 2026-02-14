@@ -181,7 +181,15 @@ def create_order():
 
     order_id = asyncio.run(_())
     if order_id:
-        # Уведомляем продавца/админов через API (без закрытия Mini App)
+        # Сохраняем/обновляем пользователя (ID, @username, имя) для админки и сообщений
+        if user_id:
+            try:
+                user_name = (data.get("user_name") or "Гость").strip()
+                username = (data.get("user_username") or "").strip()
+                asyncio.run(db.upsert_user(user_id, username, user_name))
+            except Exception:
+                pass
+        # Уведомляем продавца/админов
         try:
             user_name = (data.get("user_name") or "Гость").strip()
             username = (data.get("user_username") or "").strip()

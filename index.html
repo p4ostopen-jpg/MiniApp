@@ -933,6 +933,12 @@
         }
         .confirm-dialog p { margin-bottom: 16px; color: #1a2639; }
         .alert-low-stock { background: #fff4e0; border-radius: 12px; padding: 12px; margin-bottom: 12px; font-size: 14px; color: #c47a2d; }
+        .msg-user-link {
+            color: #4a6fa5;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .msg-user-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -1803,9 +1809,10 @@
                 container.innerHTML = customers.map(c =>
                     `<div class="product-list-item">
                         <div class="product-list-info">
-                            <h4>${c.first_name || 'Без имени'} @${c.username || '—'}</h4>
-                            <span>Заказов: ${c.order_count || 0} • Потрачено: ${c.total_spent || 0} €</span>
+                            <h4>${c.first_name || 'Без имени'} ${c.username ? '@' + c.username : ''}</h4>
+                            <span>ID: ${c.user_id || '—'} • Заказов: ${c.order_count || 0} • Потрачено: ${c.total_spent || 0} €</span>
                         </div>
+                        ${c.user_id ? `<a href="tg://user?id=${c.user_id}" target="_blank" class="msg-user-link">💬 Написать</a>` : ''}
                     </div>`
                 ).join('') || '<div class="empty-state">Нет покупателей</div>';
             } catch (e) {
@@ -1873,8 +1880,18 @@
                         <div class="order-info">
                             <div class="order-info-item">
                                 <span>👤 Клиент:</span>
-                                <span>${order.user_name || 'Неизвестно'} (@${order.user_username || 'none'})</span>
+                                <span>${order.user_name || 'Неизвестно'} ${order.user_username ? '@' + order.user_username : ''}</span>
                             </div>
+                            <div class="order-info-item">
+                                <span>🆔 ID:</span>
+                                <span>${order.user_id || '—'}</span>
+                            </div>
+                            ${order.user_id ? `
+                            <div class="order-info-item">
+                                <span>💬 Написать:</span>
+                                <a href="tg://user?id=${order.user_id}" target="_blank" class="msg-user-link" onclick="event.stopPropagation()">Открыть в Telegram</a>
+                            </div>
+                            ` : ''}
                             <div class="order-info-item">
                                 <span>📍 Адрес:</span>
                                 <span>${order.location}</span>

@@ -142,6 +142,19 @@ class Database:
                              ''', (user_id, username, first_name))
             await db.commit()
 
+    async def upsert_user(self, user_id: int, username: str, first_name: str):
+        """Добавить или обновить пользователя (ID, @username, имя) при заказе через API"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                'INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)',
+                (user_id, username or '', first_name or '')
+            )
+            await db.execute(
+                'UPDATE users SET username = ?, first_name = ? WHERE user_id = ?',
+                (username or '', first_name or '', user_id)
+            )
+            await db.commit()
+
     async def get_products(self):
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
