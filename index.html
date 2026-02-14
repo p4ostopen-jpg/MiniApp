@@ -951,8 +951,10 @@
             <button class="nav-btn admin-btn" onclick="showPage('admin')" id="adminNavBtn" style="display: none;">👨‍💼 Админ</button>
         </div>
 
-        <!-- Дебаг информация (только для разработки) -->
-        <div id="debugInfo" class="debug-info"></div>
+        <!-- Подсказка: открыть из Telegram -->
+        <div id="openFromTelegramHint" class="location-permission" style="display:none; margin-bottom:16px;">
+            <span>⚠️ Откройте приложение из Telegram (кнопка бота), чтобы сохранялись ваши заказы и ID</span>
+        </div>
 
         <!-- Главная страница с товарами -->
         <div id="mainPage">
@@ -1151,28 +1153,49 @@
         tg.expand();
         tg.MainButton.hide();
 
+        // Получить user из Telegram — initDataUnsafe или парсинг tgWebAppData из URL hash
+        function getTelegramUser() {
+            let user = tg.initDataUnsafe?.user;
+            if (user && user.id) return user;
+            try {
+                let raw = tg.initData || '';
+                if (!raw && typeof location !== 'undefined') {
+                    const hashParams = new URLSearchParams(location.hash.slice(1));
+                    raw = hashParams.get('tgWebAppData') || '';
+                    if (raw) raw = decodeURIComponent(raw);
+                }
+                if (raw) {
+                    const params = new URLSearchParams(raw);
+                    let userStr = params.get('user');
+                    if (userStr) {
+                        if (!userStr.startsWith('{')) userStr = decodeURIComponent(userStr);
+                        user = JSON.parse(userStr);
+                    }
+                }
+            } catch (e) { console.warn('Parse initData:', e); }
+            return user || {};
+        }
+
+        const _tgUser = getTelegramUser();
+
         // ==================== КОНФИГУРАЦИЯ API ====================
-        // ВАЖНО: Замени на URL твоего API при деплое (Railway, Render, PythonAnywhere и т.д.)
-        // Локально: http://localhost:8000
-        const API_BASE_URL = "http://localhost:8000";
+        const API_BASE_URL = "https://pleasurelessly-tingly-carlos.ngrok-free.dev";
 
         // ==================== ДАННЫЕ ====================
+        const ADMIN_IDS = [539040973];
 
-        // ID администраторов (ваш ID из .env)
-        const ADMIN_IDS = [539040973]; // Ваш Telegram ID
-
-        // Текущий пользователь
         const currentUser = {
-            id: tg.initDataUnsafe?.user?.id || 0,
-            username: tg.initDataUnsafe?.user?.username || 'user',
-            first_name: tg.initDataUnsafe?.user?.first_name || 'Пользователь',
-            is_admin: ADMIN_IDS.includes(tg.initDataUnsafe?.user?.id || 0)
+            id: _tgUser.id || 0,
+            username: _tgUser.username || '',
+            first_name: _tgUser.first_name || 'Пользователь',
+            is_admin: ADMIN_IDS.includes(_tgUser.id || 0)
         };
 
-        // Дебаг информация
         console.log('Current user:', currentUser);
-        console.log('Is admin:', currentUser.is_admin);
-        console.log('Admin IDs:', ADMIN_IDS);
+        console.log('Telegram initData:', tg.initData ? 'present' : 'empty');
+        if (!currentUser.id && typeof location !== 'undefined') {
+            console.warn('user_id=0: откройте приложение из Telegram (кнопка бота), а не в браузере');
+        }
 
         // Базовый URL для картинок
         const IMAGE_BASE_URL = "https://p4ostopen-jpg.github.io/MiniApp/";
@@ -2160,8 +2183,10 @@
 
         window.addEventListener('load', async () => {
             updateCartCount();
+            if (!currentUser.id) {
+                document.getElementById('openFromTelegramHint').style.display = 'flex';
+            }
 
-            // Загружаем товары и заказы из API
             await loadCatalogFromAPI();
             await loadOrdersFromAPI();
 
