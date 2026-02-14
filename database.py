@@ -1,6 +1,8 @@
 import aiosqlite
 from datetime import datetime
 
+from database_extensions import run_migrations
+
 
 class Database:
     def __init__(self):
@@ -129,6 +131,7 @@ class Database:
                              ''')
 
             await db.commit()
+            await run_migrations(self.db_path)
 
     async def add_user(self, user_id, username, first_name):
         async with aiosqlite.connect(self.db_path) as db:
@@ -150,22 +153,20 @@ class Database:
             result = []
             for p in products:
                 p_dict = dict(p)
-                # Маппинг русских названий на английские для файлов
                 name_map = {
-                    'Ананас': 'pineapple',
+                    'Ванильное': 'vanilla',
                     'Шоколадное': 'chocolate',
-                    'Клубничная': 'strawberry',
+                    'Клубничное': 'strawberry',
                     'Фисташковое': 'pistachio',
                     'Карамельное': 'caramel'
                 }
                 eng_name = name_map.get(p_dict['name'], 'ice-cream')
-                p_dict[
-                    'image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.png"  # Исправлено .jpg -> .png
+                p_dict['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.jpg"
                 p_dict['stock'] = p_dict['quantity']
                 result.append(p_dict)
             return result
 
-    async def create_order_from_items(self, user_id, location, items):
+    async def create_order_from_items(self, user_id, location, items, notes='', delivery_slot='', promo_code='', discount_amount=0):
         """Создаёт заказ из списка товаров, пришедших из Mini App"""
         async with aiosqlite.connect(self.db_path) as db:
             try:
@@ -220,11 +221,15 @@ class Database:
                     print("❌ Нет доступных товаров для заказа")
                     return None
 
+                total -= discount_amount
+                if total < 0:
+                    total = 0
+
                 # Создаём заказ
                 cursor = await db.execute('''
-                                          INSERT INTO orders (user_id, location, total, status)
-                                          VALUES (?, ?, ?, 'pending')
-                                          ''', (user_id, location, total))
+                    INSERT INTO orders (user_id, location, total, status, notes, delivery_slot, promo_code, discount_amount)
+                    VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)
+                ''', (user_id, location, total, notes, delivery_slot, promo_code, discount_amount))
                 order_id = cursor.lastrowid
                 print(f"✅ Создан заказ #{order_id}, сумма: {total}₽")
 
@@ -368,6 +373,49 @@ class Database:
                 await db.commit()
                 return new_id
 
+    async def update_product(self, product_id: int, name: str, price: int, quantity: int):
+        """Обновить товар полностью"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute('''
+                UPDATE products
+                SET name = ?, price = ?, quantity = ?, is_available = 1
+                WHERE id = ?
+            ''', (name, price, quantity, product_id))
+            await db.commit()
+
+    async def update_product_quantity(self, product_id: int, quantity: int):
+        """Обновить остаток товара (для API админки)"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                'UPDATE products SET quantity = ? WHERE id = ?',
+                (quantity, product_id)
+            )
+            await db.commit()
+
+    async def get_all_products_for_admin(self):
+        """Все товары включая недоступные (для админки)"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                'SELECT * FROM products WHERE is_available = 1'
+            )
+            rows = await cursor.fetchall()
+            result = []
+            name_map = {
+                'Ванильное': 'vanilla',
+                'Шоколадное': 'chocolate',
+                'Клубничное': 'strawberry',
+                'Фисташковое': 'pistachio',
+                'Карамельное': 'caramel'
+            }
+            for p in rows:
+                p_dict = dict(p)
+                eng_name = name_map.get(p_dict['name'], 'ice-cream')
+                p_dict['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.png"
+                p_dict['stock'] = p_dict['quantity']
+                result.append(p_dict)
+            return result
+
     async def delete_product(self, product_id):
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
@@ -385,3 +433,58 @@ class Database:
                                       WHERE order_id = ?
                                       ''', (order_id,))
             return await cursor.fetchall()
+
+    async def validate_promo(self, code: str, subtotal: int):
+        """Проверяет промокод и возвращает discount_amount или None"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                'SELECT discount_percent, discount_fixed, min_order, uses_left, valid_until FROM promo_codes WHERE code = ?',
+                (code.strip().upper(),)
+            )
+            row = await cursor.fetchone()
+            if not row:
+                return None
+            pct, fixed, min_order, uses_left, valid_until = row
+            if uses_left <= 0:
+                return None
+            if valid_until:
+                from datetime import datetime
+                if datetime.now().isoformat() > valid_until:
+                    return None
+            if min_order and subtotal < min_order:
+                return {"error": f"Минимальный заказ {min_order} €"}
+            discount = (subtotal * pct // 100) + (fixed or 0)
+            return {"discount": min(discount, subtotal)}
+
+    async def get_analytics(self):
+        """Аналитика для админки"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            today = datetime.now().strftime('%Y-%m-%d')
+            cur = await db.execute(
+                "SELECT COUNT(*) FROM orders WHERE date(created_at) = ?",
+                (today,)
+            )
+            today_orders = (await cur.fetchone())[0]
+            cur = await db.execute(
+                "SELECT COALESCE(SUM(total), 0) FROM orders WHERE status IN ('confirmed','completed')"
+            )
+            revenue = (await cur.fetchone())[0]
+            cur = await db.execute(
+                "SELECT id, name, quantity FROM products WHERE is_available = 1 AND quantity < 10"
+            )
+            low_stock = [dict(row) for row in await cur.fetchall()]
+            return {"today_orders": today_orders, "revenue": revenue, "low_stock": low_stock}
+
+    async def get_customers(self):
+        """Список покупателей для админки"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute('''
+                SELECT u.user_id, u.username, u.first_name, COUNT(o.id) as order_count, COALESCE(SUM(o.total),0) as total_spent
+                FROM users u
+                LEFT JOIN orders o ON o.user_id = u.user_id
+                GROUP BY u.user_id
+                ORDER BY total_spent DESC
+            ''')
+            return [dict(r) for r in await cur.fetchall()]

@@ -846,6 +846,93 @@
             color: #666;
             display: none;
         }
+
+        /* Loading & UX */
+        .loading-spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #eef2f5;
+            border-top-color: #4a6fa5;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-overlay {
+            text-align: center;
+            padding: 40px;
+            color: #6b7b8c;
+        }
+        .search-bar {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #eef2f5;
+            border-radius: 16px;
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+        .search-bar:focus { border-color: #4a6fa5; outline: none; }
+        .pull-refresh-hint {
+            text-align: center;
+            padding: 8px;
+            color: #6b7b8c;
+            font-size: 13px;
+        }
+        .favorite-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .product-card { position: relative; }
+        .promo-input-wrap {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .promo-input-wrap input { flex: 1; }
+        .promo-applied { color: #2d7a4b; font-size: 14px; }
+        .saved-addresses {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .saved-addr-btn {
+            padding: 8px 12px;
+            background: #f8fafc;
+            border: 1px solid #eef2f5;
+            border-radius: 12px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .saved-addr-btn:hover { border-color: #4a6fa5; }
+        .reorder-btn {
+            padding: 8px 16px;
+            background: #4a6fa5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .confirm-dialog {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 320px;
+            text-align: center;
+        }
+        .confirm-dialog p { margin-bottom: 16px; color: #1a2639; }
+        .alert-low-stock { background: #fff4e0; border-radius: 12px; padding: 12px; margin-bottom: 12px; font-size: 14px; color: #c47a2d; }
     </style>
 </head>
 <body>
@@ -870,6 +957,12 @@
                 <h1>Жи Ши</h1>
                 <p>Жижа для под-систем с доставкой</p>
             </div>
+            <input type="text" id="searchProducts" class="search-bar" placeholder="🔍 Поиск товаров..." oninput="filterProducts()">
+            <div class="pull-refresh-hint" id="pullRefreshHint" onclick="refreshMain()" style="cursor:pointer;">↓ Нажмите для обновления</div>
+            <div id="productsLoading" class="loading-overlay" style="display:none;">
+                <div class="loading-spinner"></div>
+                <p>Загрузка...</p>
+            </div>
             <div id="products" class="products-grid"></div>
         </div>
 
@@ -882,22 +975,30 @@
             <div id="cartTotal" class="cart-total">0 €</div>
 
             <div class="location-section">
-                <!-- Блок запроса разрешения на геолокацию -->
                 <div id="locationPermission" class="location-permission" style="display: none;">
                     <span>📍 Для автоматического определения адреса разрешите доступ к геолокации</span>
                     <button onclick="requestLocationPermission()">Разрешить</button>
                 </div>
-
+                <div class="saved-addresses" id="savedAddresses"></div>
                 <div class="location-buttons">
                     <button class="location-btn" onclick="getLocation()" id="locationBtn">
                         📍 Указать местоположение
                     </button>
                 </div>
-                <input type="text" id="location" class="location-input"
-                       placeholder="✏️ Или введите адрес доставки">
-                <button class="checkout-btn" onclick="checkout()">
-                    ✅ Оформить заказ
-                </button>
+                <input type="text" id="location" class="location-input" placeholder="✏️ Или введите адрес доставки">
+                <select id="deliverySlot" class="location-input">
+                    <option value="">🕐 Удобное время доставки (любое)</option>
+                    <option value="morning">Утро (9-12)</option>
+                    <option value="day">День (12-18)</option>
+                    <option value="evening">Вечер (18-22)</option>
+                </select>
+                <input type="text" id="orderNotes" class="location-input" placeholder="📝 Комментарий к заказу (необязательно)">
+                <div class="promo-input-wrap">
+                    <input type="text" id="promoCode" class="location-input" placeholder="🎟 Промокод">
+                    <button class="location-btn" style="padding: 12px 20px;" onclick="applyPromo()">Применить</button>
+                </div>
+                <div id="promoStatus" class="promo-applied" style="display:none;"></div>
+                <button class="checkout-btn" onclick="checkout()">✅ Оформить заказ</button>
             </div>
         </div>
 
@@ -935,20 +1036,16 @@
                 </div>
             </div>
 
+            <div id="adminLowStock" class="alert-low-stock" style="display:none;"></div>
             <div class="admin-actions">
-                <button class="admin-action-btn add" onclick="showAddProductModal()">
-                    ➕ Добавить новый товар
-                </button>
-                <button class="admin-action-btn orders" onclick="showAllOrders()">
-                    📋 Все заказы (история)
-                </button>
-                <button class="admin-action-btn update" onclick="showUpdateStockModal()">
-                    📦 Обновить остатки
-                </button>
-                <button class="admin-action-btn delete" onclick="showDeleteProductModal()">
-                    ❌ Удалить товар
-                </button>
+                <button class="admin-action-btn add" onclick="showAddProductModal()">➕ Добавить новый товар</button>
+                <button class="admin-action-btn orders" onclick="showAllOrders()">📋 Все заказы (история)</button>
+                <button class="admin-action-btn update" onclick="showUpdateStockModal()">📦 Обновить остатки</button>
+                <button class="admin-action-btn delete" onclick="showDeleteProductModal()">❌ Удалить товар</button>
+                <button class="admin-action-btn orders" onclick="showCustomersList()">👥 Покупатели</button>
+                <button class="admin-action-btn update" onclick="exportOrders()">📥 Экспорт заказов (CSV)</button>
             </div>
+            <div id="adminCustomersSection" style="display:none;" class="product-list"></div>
 
             <div id="adminOrdersSection" style="display: none;">
                 <div class="admin-header">
@@ -978,10 +1075,11 @@
     <!-- Toast уведомления -->
     <div id="toast" style="display:none;" class="toast"></div>
 
-    <!-- Модальное окно для добавления товара -->
+    <!-- Модальное окно для добавления/редактирования товара -->
     <div id="addProductModal" style="display:none;" class="modal">
         <div class="modal-content">
-            <div class="modal-title">➕ Добавить новый товар</div>
+            <div class="modal-title" id="addProductModalTitle">➕ Добавить новый товар</div>
+            <input type="hidden" id="editProductId" value="">
             <input type="text" id="newProductName" class="modal-input" placeholder="Название товара">
             <input type="number" id="newProductPrice" class="modal-input" placeholder="Цена">
             <input type="number" id="newProductStock" class="modal-input" placeholder="Количество">
@@ -1026,6 +1124,17 @@
         </div>
     </div>
 
+    <!-- Модальное окно подтверждения -->
+    <div id="confirmModal" style="display:none;" class="modal">
+        <div class="confirm-dialog">
+            <p id="confirmMessage">Вы уверены?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn save" id="confirmYesBtn">Да</button>
+                <button class="modal-btn cancel" onclick="hideModal('confirmModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         // Инициализация Telegram WebApp
@@ -1033,6 +1142,11 @@
         tg.ready();
         tg.expand();
         tg.MainButton.hide();
+
+        // ==================== КОНФИГУРАЦИЯ API ====================
+        // ВАЖНО: Замени на URL твоего API при деплое (Railway, Render, PythonAnywhere и т.д.)
+        // Локально: http://localhost:8000
+        const API_BASE_URL = "http://localhost:8000";
 
         // ==================== ДАННЫЕ ====================
 
@@ -1047,167 +1161,6 @@
             is_admin: ADMIN_IDS.includes(tg.initDataUnsafe?.user?.id || 0)
         };
 
-        // Добавьте в начало скрипта после инициализации tg:
-
-        // ==================== СИНХРОНИЗАЦИЯ ====================
-
-        // Функция для обновления товаров с сервера
-        async function syncProductsFromServer() {
-            showToast('🔄 Синхронизация товаров...');
-            tg.sendData(JSON.stringify({action: 'get_products'}));
-        }
-
-        // Функция для обновления заказов с сервера (для админа)
-        async function syncAllOrdersFromServer() {
-            if (!currentUser.is_admin) return;
-            showToast('🔄 Синхронизация заказов...');
-            tg.sendData(JSON.stringify({action: 'get_all_orders'}));
-        }
-
-        // Периодическая синхронизация (каждые 30 минут)
-        setInterval(() => {
-            console.log('🔄 Периодическая синхронизация...');
-            syncProductsFromServer();
-            if (currentUser.is_admin) {
-                syncAllOrdersFromServer();
-            }
-        }, 1800000); // 30 минут = 1800000 миллисекунд
-
-        // Обработка входящих сообщений от бота
-        tg.onEvent('message', (event) => {
-            try {
-                const response = JSON.parse(event.data);
-                console.log('📦 Получено сообщение от бота:', response);
-
-                switch (response.type) {
-                    case 'products':
-                        // Обновляем каталог товаров
-                        if (response.data && Array.isArray(response.data)) {
-                            catalog = response.data;
-                            saveCatalog();
-                            renderProducts();
-                            showToast('✅ Товары обновлены');
-                        }
-                        break;
-
-                    case 'orders':
-                        // Обновляем заказы пользователя
-                        if (response.data && Array.isArray(response.data)) {
-                            orders = response.data;
-                            saveOrders();
-                            if (document.getElementById('ordersPage').style.display === 'block') {
-                                renderOrders();
-                            }
-                        }
-                        break;
-
-                    case 'all_orders':
-                        // Обновляем все заказы (для админа)
-                        if (response.data && Array.isArray(response.data)) {
-                            allOrders = response.data;
-                            saveAllOrders();
-                            if (document.getElementById('adminPage').style.display === 'block') {
-                                renderAdminPanel();
-                            }
-                        }
-                        break;
-
-                    case 'order_created':
-                        // Новый заказ создан
-                        if (response.data) {
-                            // Добавляем в список всех заказов
-                            allOrders = [response.data, ...allOrders];
-                            saveAllOrders();
-
-                            // Добавляем в заказы пользователя если это его заказ
-                            if (response.data.user_id === currentUser.id) {
-                                orders = [response.data, ...orders];
-                                saveOrders();
-                                if (document.getElementById('ordersPage').style.display === 'block') {
-                                    renderOrders();
-                                }
-                            }
-
-                            showToast('✅ Заказ создан');
-                        }
-                        break;
-
-                    case 'order_status_update':
-                        // Обновление статуса заказа
-                        if (response.data) {
-                            const {id, status, order} = response.data;
-
-                            // Обновляем в списке всех заказов
-                            const orderIndex = allOrders.findIndex(o => o.id === id);
-                            if (orderIndex !== -1) {
-                                allOrders[orderIndex] = order;
-                                saveAllOrders();
-                            }
-
-                            // Обновляем в заказах пользователя
-                            const userOrderIndex = orders.findIndex(o => o.id === id);
-                            if (userOrderIndex !== -1) {
-                                orders[userOrderIndex] = order;
-                                saveOrders();
-                            }
-
-                            // Обновляем отображение
-                            if (document.getElementById('ordersPage').style.display === 'block') {
-                                renderOrders();
-                            }
-                            if (document.getElementById('adminPage').style.display === 'block') {
-                                renderAdminPanel();
-                            }
-
-                            showToast(`📊 Статус заказа #${id} обновлен`);
-                        }
-                        break;
-
-                    case 'sync_products':
-                        // Массовая синхронизация товаров
-                        if (response.data && Array.isArray(response.data)) {
-                            catalog = response.data;
-                            saveCatalog();
-                            renderProducts();
-                            showToast('✅ Товары синхронизированы');
-                        }
-                        break;
-
-                    case 'sync_orders':
-                        // Массовая синхронизация заказов (для админа)
-                        if (response.data && Array.isArray(response.data)) {
-                            allOrders = response.data;
-                            saveAllOrders();
-                            if (document.getElementById('adminPage').style.display === 'block') {
-                                renderAdminPanel();
-                            }
-                        }
-                        break;
-
-                    case 'new_order':
-                        // Новый заказ для админа
-                        if (response.data) {
-                            allOrders = [response.data, ...allOrders];
-                            saveAllOrders();
-                            if (document.getElementById('adminPage').style.display === 'block') {
-                                renderAdminPanel();
-                            }
-                            showToast('🆕 Новый заказ!');
-                        }
-                        break;
-
-                    case 'error':
-                        showToast(`❌ ${response.message}`, true);
-                        break;
-
-                    default:
-                        console.log('Неизвестный тип:', response.type);
-                }
-            } catch (e) {
-                console.error('Ошибка обработки сообщения:', e);
-            }
-        });
-
         // Дебаг информация
         console.log('Current user:', currentUser);
         console.log('Is admin:', currentUser.is_admin);
@@ -1216,73 +1169,188 @@
         // Базовый URL для картинок
         const IMAGE_BASE_URL = "https://p4ostopen-jpg.github.io/MiniApp/";
 
-        // Каталог товаров с реальными картинками
-        let catalog = [
-            {
-                id: 1,
-                name: "Ананас",
-                price: 100,
-                stock: 50,
-                image: "🍦",
-                image_url: IMAGE_BASE_URL + "pineapple.png"
-            },
-            {
-                id: 2,
-                name: "Шоколадное",
-                price: 120,
-                stock: 40,
-                image: "🍫",
-                image_url: IMAGE_BASE_URL + "chocolate.png"
-            },
-            {
-                id: 3,
-                name: "Клубничная",
-                price: 110,
-                stock: 30,
-                image: "🍓",
-                image_url: IMAGE_BASE_URL + "strawberry.png"
-            },
-            {
-                id: 4,
-                name: "Фисташковое",
-                price: 150,
-                stock: 25,
-                image: "🌰",
-                image_url: IMAGE_BASE_URL + "pistachio.png"
-            },
-            {
-                id: 5,
-                name: "Карамельное",
-                price: 130,
-                stock: 35,
-                image: "🍯",
-                image_url: IMAGE_BASE_URL + "caramel.png"
-            }
-        ];
+        // Каталог товаров (загружается из API)
+        let catalog = [];
 
-        // Корзина пользователя
+        // Корзина пользователя (локальная до checkout)
         let cart = [];
 
-        // Заказы пользователя
+        // Заказы пользователя (из API)
         let orders = [];
 
-        // Все заказы (для админа)
+        // Все заказы для админа (из API)
         let allOrders = [];
 
-        // ==================== ЗАГРУЗКА ИЗ ЛОКАЛСТОРАДЖ ====================
+        // ==================== API ЗАПРОСЫ ====================
 
-        function loadFromStorage() {
-            // Загружаем каталог
-            const savedCatalog = localStorage.getItem('catalog');
-            if (savedCatalog) {
-                try {
-                    catalog = JSON.parse(savedCatalog);
-                } catch (e) {
-                    console.error('Ошибка загрузки каталога');
+        async function apiRequest(method, path, body = null) {
+            const opts = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-User-Id': String(currentUser.id)
                 }
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(API_BASE_URL + path, opts);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `HTTP ${res.status}`);
             }
+            return res.json();
+        }
 
-            // Загружаем корзину
+        let appliedDiscount = 0;
+        let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+        let recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        let savedAddresses = JSON.parse(localStorage.getItem('savedAddresses') || '[]');
+
+        async function loadCatalogFromAPI() {
+            const loading = document.getElementById('productsLoading');
+            const grid = document.getElementById('products');
+            loading.style.display = 'block';
+            grid.style.opacity = '0.5';
+            try {
+                catalog = await apiRequest('GET', '/api/products');
+                renderProducts();
+                return true;
+            } catch (e) {
+                console.error('Ошибка загрузки товаров:', e);
+                showToast('❌ Не удалось загрузить товары. Проверь API.', true);
+                grid.innerHTML = '<div class="empty-state">❌ Ошибка загрузки. <button onclick="loadCatalogFromAPI()" style="margin-top:12px;padding:8px 16px;background:#4a6fa5;color:white;border:none;border-radius:12px;cursor:pointer;">Повторить</button></div>';
+                return false;
+            } finally {
+                loading.style.display = 'none';
+                grid.style.opacity = '1';
+            }
+        }
+
+        function filterProducts() {
+            const q = (document.getElementById('searchProducts').value || '').toLowerCase();
+            const filtered = q ? catalog.filter(p => p.name.toLowerCase().includes(q)) : catalog;
+            renderProductsToContainer(filtered, document.getElementById('products'));
+        }
+
+        function renderProductsToContainer(products, container) {
+            if (!container) container = document.getElementById('products');
+            if (!products || products.length === 0) {
+                container.innerHTML = '<div class="empty-state">🔍 Ничего не найдено</div>';
+                return;
+            }
+            container.innerHTML = products.map(product => {
+                const isAvailable = product.stock > 0;
+                const isFav = favorites.includes(product.id);
+                return `
+                <div class="product-card">
+                    <button class="favorite-btn" onclick="toggleFavorite(${product.id})">${isFav ? '❤️' : '🤍'}</button>
+                    <div class="product-image">
+                        <img src="${product.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" onerror="this.style.display='none';this.parentElement.innerHTML='${product.image || '🍦'}';">
+                    </div>
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-price">${product.price} €</div>
+                    <div class="product-stock">${isAvailable ? `✅ В наличии: ${product.stock} шт.` : '❌ Нет в наличии'}</div>
+                    ${isAvailable ? `
+                    <div class="product-actions">
+                        <div class="qty-selector">
+                            <button class="qty-btn" onclick="decreaseQty(${product.id})">−</button>
+                            <span id="qty_${product.id}" class="quantity">1</span>
+                            <button class="qty-btn" onclick="increaseQty(${product.id})">+</button>
+                        </div>
+                        <button class="add-btn" onclick="addToCart(${product.id})">➕</button>
+                    </div>` : `
+                    <button class="add-btn disabled" disabled>Нет в наличии</button>
+                    `}
+                </div>`;
+            }).join('');
+        }
+
+        function toggleFavorite(productId) {
+            if (favorites.includes(productId)) {
+                favorites = favorites.filter(id => id !== productId);
+            } else {
+                favorites.push(productId);
+            }
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            filterProducts();
+        }
+
+        async function applyPromo() {
+            const code = document.getElementById('promoCode').value.trim();
+            if (!code) { showToast('Введите промокод', true); return; }
+            const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+            try {
+                const r = await apiRequest('POST', '/api/promo/validate', { code, subtotal });
+                if (r.valid) {
+                    appliedDiscount = r.discount;
+                    document.getElementById('promoStatus').style.display = 'block';
+                    document.getElementById('promoStatus').textContent = `✅ Скидка ${r.discount} €`;
+                    document.getElementById('promoStatus').style.color = '#2d7a4b';
+                    renderCart();
+                    showToast(`Промокод применён! Скидка ${r.discount} €`);
+                } else {
+                    appliedDiscount = 0;
+                    document.getElementById('promoStatus').textContent = '❌ ' + (r.error || 'Промокод недействителен');
+                    document.getElementById('promoStatus').style.color = '#c62828';
+                    document.getElementById('promoStatus').style.display = 'block';
+                }
+            } catch (e) {
+                appliedDiscount = 0;
+                document.getElementById('promoStatus').textContent = '❌ Ошибка проверки';
+                document.getElementById('promoStatus').style.display = 'block';
+            }
+        }
+
+        function showConfirm(message, onConfirm) {
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmModal').style.display = 'flex';
+            document.getElementById('confirmYesBtn').onclick = () => { hideModal('confirmModal'); onConfirm(); };
+        }
+
+        async function loadOrdersFromAPI() {
+            if (!currentUser.id) return;
+            try {
+                orders = await apiRequest('GET', '/api/orders');
+                renderOrders();
+                return true;
+            } catch (e) {
+                console.error('Ошибка загрузки заказов:', e);
+                showToast('❌ Не удалось загрузить заказы', true);
+                return false;
+            }
+        }
+
+        async function loadAllOrdersFromAPI() {
+            if (!currentUser.is_admin) return;
+            try {
+                allOrders = await apiRequest('GET', '/api/admin/orders');
+                renderAdminOrders();
+                updateAdminStats();
+                return true;
+            } catch (e) {
+                console.error('Ошибка загрузки заказов:', e);
+                showToast('❌ Не удалось загрузить заказы админа', true);
+                return false;
+            }
+        }
+
+        async function loadAdminProductsFromAPI() {
+            if (!currentUser.is_admin) return;
+            try {
+                catalog = await apiRequest('GET', '/api/admin/products');
+                renderAdminProducts();
+                renderProducts();
+                updateAdminStats();
+                return true;
+            } catch (e) {
+                console.error('Ошибка загрузки товаров админа:', e);
+                showToast('❌ Не удалось загрузить товары', true);
+                return false;
+            }
+        }
+
+        // ==================== КОРЗИНА (только localStorage - до checkout) ====================
+
+        function loadCartFromStorage() {
             const savedCart = localStorage.getItem('cart');
             if (savedCart) {
                 try {
@@ -1291,53 +1359,16 @@
                     console.error('Ошибка загрузки корзины');
                 }
             }
-
-            // Загружаем заказы пользователя
-            const savedOrders = localStorage.getItem('orders');
-            if (savedOrders) {
-                try {
-                    orders = JSON.parse(savedOrders);
-                } catch (e) {
-                    console.error('Ошибка загрузки заказов');
-                }
-            }
-
-            // Загружаем все заказы
-            const savedAllOrders = localStorage.getItem('allOrders');
-            if (savedAllOrders) {
-                try {
-                    allOrders = JSON.parse(savedAllOrders);
-                } catch (e) {
-                    console.error('Ошибка загрузки всех заказов');
-                }
-            }
         }
 
-        // Сохраняем каталог
-        function saveCatalog() {
-            localStorage.setItem('catalog', JSON.stringify(catalog));
-        }
-
-        // Сохраняем корзину
         function saveCart() {
             localStorage.setItem('cart', JSON.stringify(cart));
             updateCartCount();
         }
 
-        // Сохраняем заказы пользователя
-        function saveOrders() {
-            localStorage.setItem('orders', JSON.stringify(orders));
-        }
-
-        // Сохраняем все заказы
-        function saveAllOrders() {
-            localStorage.setItem('allOrders', JSON.stringify(allOrders));
-        }
-
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
-        // Загружаем данные
-        loadFromStorage();
+        loadCartFromStorage();
 
         // Показываем кнопку админа если пользователь админ
         if (currentUser.is_admin) {
@@ -1459,39 +1490,13 @@
         // ==================== ТОВАРЫ ====================
 
         function renderProducts() {
-            const container = document.getElementById('products');
+            filterProducts();
+        }
 
-            container.innerHTML = catalog.map(product => {
-                const isAvailable = product.stock > 0;
-
-                return `
-                <div class="product-card">
-                <div class="product-image">
-                    <img src="${product.image_url}"
-                         alt="${product.name}"
-                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 16px;"
-                         onerror="this.style.display='none'; this.parentElement.innerHTML='${product.image}';">
-                </div>
-                <div class="product-name">${product.name}</div>
-                <div class="product-price">${product.price} €</div>
-                <div class="product-stock">
-                    ${isAvailable ? `✅ В наличии: ${product.stock} шт.` : '❌ Нет в наличии'}
-                </div>
-                ${isAvailable ? `
-                    <div class="product-actions">
-                        <div class="qty-selector">
-                            <button class="qty-btn" onclick="decreaseQty(${product.id})">−</button>
-                            <span id="qty_${product.id}" class="quantity">1</span>
-                            <button class="qty-btn" onclick="increaseQty(${product.id})">+</button>
-                        </div>
-                        <button class="add-btn" onclick="addToCart(${product.id})">➕</button>
-                    </div>
-                ` : `
-                    <button class="add-btn disabled" disabled>Нет в наличии</button>
-                `}
-            </div>
-        `;
-            }).join('');
+        async function refreshMain() {
+            await loadCatalogFromAPI();
+            await loadOrdersFromAPI();
+            showToast('✅ Обновлено');
         }
 
         function increaseQty(id) {
@@ -1537,16 +1542,19 @@
 
         function renderCart() {
             const container = document.getElementById('cartItems');
+            renderSavedAddresses();
 
             if (cart.length === 0) {
-                container.innerHTML = '<div class="empty-state">🛒 Корзина пуста</div>';
+                container.innerHTML = '<div class="empty-state">🛒 Корзина пуста. Добавьте товары из меню</div>';
                 document.getElementById('cartTotal').innerText = '0 €';
+                appliedDiscount = 0;
+                document.getElementById('promoStatus').style.display = 'none';
                 return;
             }
 
-            let total = 0;
+            let subtotal = 0;
             container.innerHTML = cart.map(item => {
-                total += item.price * item.quantity;
+                subtotal += item.price * item.quantity;
                 return `
                     <div class="cart-item">
                         <div class="cart-item-info">
@@ -1565,7 +1573,27 @@
                 `;
             }).join('');
 
-            document.getElementById('cartTotal').innerText = `${total} €`;
+            const total = Math.max(0, subtotal - appliedDiscount);
+            document.getElementById('cartTotal').innerHTML = appliedDiscount > 0
+                ? `<s>${subtotal} €</s> <span style="color:#2d7a4b">${total} €</span>`
+                : `${total} €`;
+        }
+
+        function renderSavedAddresses() {
+            const el = document.getElementById('savedAddresses');
+            if (!savedAddresses.length) { el.innerHTML = ''; return; }
+            el.innerHTML = savedAddresses.map((addr, i) =>
+                `<button class="saved-addr-btn" onclick="document.getElementById('location').value='${addr.replace(/'/g, "\\'")}'">📍 ${addr.slice(0,30)}${addr.length>30?'...':''}</button>`
+            ).join('');
+        }
+
+        function saveCurrentAddress() {
+            const addr = document.getElementById('location').value.trim();
+            if (addr && !savedAddresses.includes(addr)) {
+                savedAddresses = [addr, ...savedAddresses].slice(0, 5);
+                localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+                renderSavedAddresses();
+            }
         }
 
         function updateCart(productId, change) {
@@ -1589,7 +1617,7 @@
 
         // ==================== ЗАКАЗЫ ====================
 
-        function checkout() {
+        async function checkout() {
             const location = document.getElementById('location').value.trim();
 
             if (!location) {
@@ -1604,17 +1632,8 @@
                 return;
             }
 
-            // Создаем новый заказ
-            const newOrder = {
-                id: allOrders.length + 1,
-                user_id: currentUser.id,
-                user_name: currentUser.first_name,
-                user_username: currentUser.username,
-                created_at: new Date().toISOString(),
-                location: location,
-                total: cart.reduce((sum, i) => sum + (i.price * i.quantity), 0),
-                status: 'pending',
-                status_text: '⏳ Ждет подтверждения',
+            const orderPayload = {
+                location,
                 items: cart.map(i => ({
                     id: i.id,
                     name: i.name,
@@ -1622,41 +1641,48 @@
                     price: i.price,
                     total: i.price * i.quantity,
                     image: i.image
-                }))
+                })),
+                notes: document.getElementById('orderNotes').value.trim(),
+                delivery_slot: document.getElementById('deliverySlot').value || '',
+                promo_code: document.getElementById('promoCode').value.trim() || '',
+                discount_amount: appliedDiscount
             };
 
-            // Добавляем в список всех заказов
-            allOrders = [newOrder, ...allOrders];
-            saveAllOrders();
+            try {
+                const result = await apiRequest('POST', '/api/orders', orderPayload);
+                if (!result.success) throw new Error('Order failed');
 
-            // Добавляем в заказы текущего пользователя
-            orders = [newOrder, ...orders];
-            saveOrders();
+                // Уведомляем бота (для сообщения продавцу/админам)
+                tg.sendData(JSON.stringify({
+                    action: 'create_order',
+                    order: {
+                        id: result.order_id,
+                        user_id: currentUser.id,
+                        user_name: currentUser.first_name,
+                        location: location,
+                        total: cart.reduce((sum, i) => sum + (i.price * i.quantity), 0),
+                        items: orderPayload.items
+                    }
+                }));
 
-            // Отправляем в Telegram бота
-            tg.sendData(JSON.stringify({
-                action: 'create_order',
-                order: {
-                    id: newOrder.id,
-                    user_id: newOrder.user_id,
-                    user_name: newOrder.user_name,
-                    location: newOrder.location,
-                    total: newOrder.total,
-                    items: newOrder.items
-                }
-            }));
+                saveCurrentAddress();
+                cart = [];
+                appliedDiscount = 0;
+                document.getElementById('promoCode').value = '';
+                document.getElementById('promoStatus').style.display = 'none';
+                document.getElementById('orderNotes').value = '';
+                document.getElementById('deliverySlot').value = '';
+                saveCart();
+                renderCart();
+                document.getElementById('location').value = '';
 
-            // Очищаем корзину
-            cart = [];
-            saveCart();
-            renderCart();
-            document.getElementById('location').value = '';
-
-            showToast('✅ Заказ оформлен!');
-
-            // Переходим на страницу заказов
-            showPage('orders');
-            renderOrders();
+                showToast('✅ Заказ оформлен!');
+                showPage('orders');
+                await loadOrdersFromAPI();
+            } catch (e) {
+                console.error('Ошибка создания заказа:', e);
+                showToast('❌ Ошибка создания заказа. Проверь API.', true);
+            }
         }
 
         function renderOrders() {
@@ -1708,32 +1734,91 @@
                         <div class="order-total">
                             Итого: ${order.total} €
                         </div>
+                        ${order.status !== 'cancelled' ? `<button class="reorder-btn" onclick="reorder(${order.id})">🔄 Повторить заказ</button>` : ''}
                     </div>
                 `;
             }).join('');
         }
 
+        function reorder(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order || !order.items) return;
+            for (const item of order.items) {
+                const product = catalog.find(p => (p.id === item.id) || (p.name === item.name));
+                if (product && product.stock > 0) {
+                    const qty = Math.min(item.quantity, product.stock);
+                    const existing = cart.find(i => i.id === product.id);
+                    if (existing) existing.quantity += qty;
+                    else cart.push({ id: product.id, name: product.name, price: product.price, quantity: qty, image: product.image || '🍦' });
+                }
+            }
+            saveCart();
+            renderCart();
+            showPage('cart');
+            showToast('✅ Товары добавлены в корзину');
+        }
+
         // ==================== АДМИН ПАНЕЛЬ ====================
 
-        function renderAdminPanel() {
+        async function renderAdminPanel() {
             if (!currentUser.is_admin) {
                 showToast('❌ Нет доступа к админ-панели', true);
                 showPage('main');
                 return;
             }
 
-            // Обновляем статистику
-            updateAdminStats();
+            await loadAdminProductsFromAPI();
+            await loadAllOrdersFromAPI();
+            await loadAdminAnalytics();
 
-            // Отображаем список товаров
-            renderAdminProducts();
-
-            // Отображаем заказы если секция открыта
             if (document.getElementById('adminOrdersSection').style.display === 'block') {
                 renderAdminOrders();
             }
+            if (document.getElementById('adminCustomersSection').style.display === 'block') {
+                renderCustomersList();
+            }
 
             showToast('👨‍💼 Панель администратора загружена');
+        }
+
+        async function loadAdminAnalytics() {
+            try {
+                const a = await apiRequest('GET', '/api/admin/analytics');
+                const lowEl = document.getElementById('adminLowStock');
+                if (a.low_stock && a.low_stock.length > 0) {
+                    lowEl.style.display = 'block';
+                    lowEl.innerHTML = '⚠️ Мало на складе: ' + a.low_stock.map(p => `${p.name} (${p.quantity})`).join(', ');
+                } else {
+                    lowEl.style.display = 'none';
+                }
+            } catch (e) {}
+        }
+
+        async function showCustomersList() {
+            const section = document.getElementById('adminCustomersSection');
+            section.style.display = section.style.display === 'block' ? 'none' : 'block';
+            if (section.style.display === 'block') await renderCustomersList();
+        }
+
+        async function renderCustomersList() {
+            try {
+                const customers = await apiRequest('GET', '/api/admin/customers');
+                const container = document.getElementById('adminCustomersSection');
+                container.innerHTML = customers.map(c =>
+                    `<div class="product-list-item">
+                        <div class="product-list-info">
+                            <h4>${c.first_name || 'Без имени'} @${c.username || '—'}</h4>
+                            <span>Заказов: ${c.order_count || 0} • Потрачено: ${c.total_spent || 0} €</span>
+                        </div>
+                    </div>`
+                ).join('') || '<div class="empty-state">Нет покупателей</div>';
+            } catch (e) {
+                showToast('Ошибка загрузки', true);
+            }
+        }
+
+        function exportOrders() {
+            window.open(API_BASE_URL + '/api/admin/orders/export?user_id=' + currentUser.id, '_blank');
         }
 
         function updateAdminStats() {
@@ -1857,126 +1942,89 @@
             document.getElementById('adminOrdersSection').style.display = 'none';
         }
 
-        // Управление заказами
-        function confirmOrder(orderId) {
-            const order = allOrders.find(o => o.id === orderId);
-            if (order) {
-                order.status = 'confirmed';
-                order.status_text = '✅ Подтверждено';
-
-                // Обновляем в заказах пользователя
-                const userOrder = orders.find(o => o.id === orderId);
-                if (userOrder) {
-                    userOrder.status = 'confirmed';
-                    userOrder.status_text = '✅ Подтверждено';
-                }
-
-                saveAllOrders();
-                saveOrders();
-                renderAdminOrders();
-                updateAdminStats();
+        // Управление заказами (через API)
+        async function confirmOrder(orderId) {
+            try {
+                await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'confirmed' });
                 showToast(`✅ Заказ #${orderId} подтвержден`);
+                await loadAllOrdersFromAPI();
+            } catch (e) {
+                showToast('❌ Ошибка подтверждения заказа', true);
             }
         }
 
-        function cancelOrder(orderId) {
-            const order = allOrders.find(o => o.id === orderId);
-            if (order) {
-                order.status = 'cancelled';
-                order.status_text = '❌ Отменён';
-
-                const userOrder = orders.find(o => o.id === orderId);
-                if (userOrder) {
-                    userOrder.status = 'cancelled';
-                    userOrder.status_text = '❌ Отменён';
+        async function cancelOrder(orderId) {
+            showConfirm(`Отменить заказ #${orderId}?`, async () => {
+                try {
+                    await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'cancelled' });
+                    showToast(`❌ Заказ #${orderId} отменен`);
+                    await loadAllOrdersFromAPI();
+                } catch (e) {
+                    showToast('❌ Ошибка отмены заказа', true);
                 }
-
-                saveAllOrders();
-                saveOrders();
-                renderAdminOrders();
-                updateAdminStats();
-                showToast(`❌ Заказ #${orderId} отменен`);
-            }
+            });
         }
 
-        function restoreOrder(orderId) {
-            const order = allOrders.find(o => o.id === orderId);
-            if (order) {
-                order.status = 'pending';
-                order.status_text = '⏳ Ждет подтверждения';
-
-                const userOrder = orders.find(o => o.id === orderId);
-                if (userOrder) {
-                    userOrder.status = 'pending';
-                    userOrder.status_text = '⏳ Ждет подтверждения';
-                }
-
-                saveAllOrders();
-                saveOrders();
-                renderAdminOrders();
-                updateAdminStats();
+        async function restoreOrder(orderId) {
+            try {
+                await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'pending' });
                 showToast(`🔄 Заказ #${orderId} восстановлен`);
+                await loadAllOrdersFromAPI();
+            } catch (e) {
+                showToast('❌ Ошибка восстановления заказа', true);
             }
         }
 
-        function completeOrder(orderId) {
-            const order = allOrders.find(o => o.id === orderId);
-            if (order) {
-                order.status = 'completed';
-                order.status_text = '👍 Выполнен';
-
-                const userOrder = orders.find(o => o.id === orderId);
-                if (userOrder) {
-                    userOrder.status = 'completed';
-                    userOrder.status_text = '👍 Выполнен';
-                }
-
-                saveAllOrders();
-                saveOrders();
-                renderAdminOrders();
-                updateAdminStats();
+        async function completeOrder(orderId) {
+            try {
+                await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'completed' });
                 showToast(`👍 Заказ #${orderId} выполнен`);
+                await loadAllOrdersFromAPI();
+            } catch (e) {
+                showToast('❌ Ошибка выполнения заказа', true);
             }
         }
 
         // Управление товарами
         function showAddProductModal() {
+            document.getElementById('editProductId').value = '';
+            document.getElementById('addProductModalTitle').innerText = '➕ Добавить новый товар';
+            document.getElementById('newProductName').value = '';
+            document.getElementById('newProductPrice').value = '';
+            document.getElementById('newProductStock').value = '';
             document.getElementById('addProductModal').style.display = 'flex';
         }
 
-        function addProduct() {
+        async function addProduct() {
             const name = document.getElementById('newProductName').value.trim();
             const price = parseInt(document.getElementById('newProductPrice').value);
             const stock = parseInt(document.getElementById('newProductStock').value);
-            const image = document.getElementById('newProductImage').value;
+            const editId = document.getElementById('editProductId').value;
 
-            if (!name || !price || !stock) {
+            if (!name || !price || stock < 0) {
                 showToast('❌ Заполните все поля', true);
                 return;
             }
 
-            const newId = Math.max(...catalog.map(p => p.id), 0) + 1;
-
-            catalog.push({
-                id: newId,
-                name: name,
-                price: price,
-                stock: stock,
-                image: image
-            });
-
-            saveCatalog();
-            renderProducts();
-            renderAdminProducts();
-            updateAdminStats();
-            hideModal('addProductModal');
-
-            // Очищаем поля
-            document.getElementById('newProductName').value = '';
-            document.getElementById('newProductPrice').value = '';
-            document.getElementById('newProductStock').value = '';
-
-            showToast(`✅ Товар "${name}" добавлен`);
+            try {
+                if (editId) {
+                    await apiRequest('PUT', `/api/admin/products/${editId}`, { name, price, quantity: stock });
+                    showToast(`✅ Товар "${name}" обновлен`);
+                } else {
+                    await apiRequest('POST', '/api/admin/products', { name, price, quantity: stock });
+                    showToast(`✅ Товар "${name}" добавлен`);
+                }
+                document.getElementById('editProductId').value = '';
+                document.getElementById('addProductModalTitle').innerText = '➕ Добавить новый товар';
+                hideModal('addProductModal');
+                document.getElementById('newProductName').value = '';
+                document.getElementById('newProductPrice').value = '';
+                document.getElementById('newProductStock').value = '';
+                await loadAdminProductsFromAPI();
+                renderProducts();
+            } catch (e) {
+                showToast('❌ Ошибка сохранения товара', true);
+            }
         }
 
         function showUpdateStockModal() {
@@ -1987,19 +2035,19 @@
             document.getElementById('updateStockModal').style.display = 'flex';
         }
 
-        function updateProductStock() {
+        async function updateProductStock() {
             const productId = parseInt(document.getElementById('updateProductSelect').value);
             const newStock = parseInt(document.getElementById('updateProductStock').value);
 
-            const product = catalog.find(p => p.id === productId);
-            if (product) {
-                product.stock = newStock;
-                saveCatalog();
-                renderProducts();
-                renderAdminProducts();
+            try {
+                await apiRequest('PUT', `/api/admin/products/${productId}/stock`, { stock: newStock });
                 hideModal('updateStockModal');
                 document.getElementById('updateProductStock').value = '';
                 showToast(`📦 Остатки обновлены`);
+                await loadAdminProductsFromAPI();
+                renderProducts();
+            } catch (e) {
+                showToast('❌ Ошибка обновления остатков', true);
             }
         }
 
@@ -2011,32 +2059,35 @@
             document.getElementById('deleteProductModal').style.display = 'flex';
         }
 
-        function deleteProduct() {
+        async function deleteProduct() {
             const productId = parseInt(document.getElementById('deleteProductSelect').value);
-            deleteProductById(productId);
+            const product = catalog.find(p => p.id === productId);
             hideModal('deleteProductModal');
+            showConfirm(`Удалить товар "${product ? product.name : ''}"?`, () => deleteProductById(productId));
         }
 
-        function deleteProductById(productId) {
+        async function deleteProductById(productId) {
             const product = catalog.find(p => p.id === productId);
-            catalog = catalog.filter(p => p.id !== productId);
-            saveCatalog();
-            renderProducts();
-            renderAdminProducts();
-            showToast(`❌ Товар "${product.name}" удален`);
+            try {
+                await apiRequest('DELETE', `/api/admin/products/${productId}`);
+                showToast(`❌ Товар "${product ? product.name : ''}" удален`);
+                await loadAdminProductsFromAPI();
+                renderProducts();
+            } catch (e) {
+                showToast('❌ Ошибка удаления товара', true);
+            }
         }
 
         function showEditProductModal(productId) {
             const product = catalog.find(p => p.id === productId);
-            // Заполняем модалку для редактирования
+            if (!product) return;
+            document.getElementById('editProductId').value = productId;
+            document.getElementById('addProductModalTitle').innerText = '✏️ Редактировать товар';
             document.getElementById('newProductName').value = product.name;
             document.getElementById('newProductPrice').value = product.price;
             document.getElementById('newProductStock').value = product.stock;
             document.getElementById('newProductImage').value = product.image || '🍦';
-
-            // Удаляем старый товар и показываем модалку добавления
-            deleteProductById(productId);
-            showAddProductModal();
+            document.getElementById('addProductModal').style.display = 'flex';
         }
 
         // ==================== МОДАЛЬНЫЕ ОКНА ====================
@@ -2094,19 +2145,16 @@
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
-        window.addEventListener('load', () => {
-            // Показываем главную страницу
-            showPage('main');
-
-            // Обновляем счетчик корзины
+        window.addEventListener('load', async () => {
             updateCartCount();
 
-            // Загружаем заказы
-            renderOrders();
+            // Загружаем товары и заказы из API
+            await loadCatalogFromAPI();
+            await loadOrdersFromAPI();
 
+            showPage('main');
             showToast('🍦 Добро пожаловать!');
 
-            // Дебаг информация
             console.log('App loaded');
             console.log('Current user ID:', currentUser.id);
             console.log('Is admin:', currentUser.is_admin);
