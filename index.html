@@ -1233,6 +1233,7 @@
             // otherwise CORS preflight may fail if server doesn't allow them.
             const headers = {
                 'X-User-Id': String(currentUser.id),
+                'ngrok-skip-browser-warning': 'true', // Skip ngrok-free.dev warning page
             };
             if (body !== null) {
                 headers['Content-Type'] = 'application/json';
@@ -2306,7 +2307,10 @@
                 console.log('Testing API connectivity...');
                 const testRes = await fetch(`${API_BASE_URL}/api/health?_t=${Date.now()}`, {
                     method: 'GET',
-                    cache: 'no-store'
+                    cache: 'no-store',
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    }
                 });
                 console.log('API Health check:', testRes.status, testRes.ok);
                 if (!testRes.ok) {

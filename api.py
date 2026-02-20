@@ -113,7 +113,7 @@ def after_request(response):
     # these headers are explicitly allowed.)
     response.headers.add(
         'Access-Control-Allow-Headers',
-        'Content-Type, X-User-Id, Cache-Control, Pragma, Expires'
+        'Content-Type, X-User-Id, Cache-Control, Pragma, Expires, ngrok-skip-browser-warning'
     )
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     # Prevent caching to ensure fresh data
