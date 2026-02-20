@@ -42,25 +42,25 @@ def send_telegram_notification(order_id: int, user_name: str, username: str, loc
 
 # Карта названий -> файлы картинок (как в Mini App)
 IMAGE_MAP = {
-    "Ванильное": "vanilla",
-    "Шоколадное": "chocolate",
     "Клубничное": "strawberry",
-    "Клубничная": "strawberry",
-    "Фисташковое": "pistachio",
-    "Карамельное": "caramel",
+    "Энергетик": "energy",
+    "Черешня-лимон": "Cherrylemon",
+    "Тропическое": "tropical",
+    "Арбуз-малина": "watermelonraspberry",
     "Ананас": "pineapple",
 }
 IMAGE_BASE = "https://p4ostopen-jpg.github.io/MiniApp/"
 DEFAULT_IMAGE = "ice-cream"
 
 # Дефолтные товары (чтобы магазин не был пустым, если бот ещё не запускали)
+
 DEFAULT_PRODUCTS = [
-    ("Ванильное", 100, 50),
-    ("Шоколадное", 120, 40),
-    ("Клубничное", 110, 30),
-    ("Фисташковое", 150, 25),
-    ("Карамельное", 130, 35),
-    ("Ананас", 100, 50),
+    ("Энергетик", 25, 50),
+    ("Черешня-лимон", 25, 40),
+    ("Клубничное", 25, 30),
+    ("Тропическое", 25, 25),
+    ("Арбуз-черника", 25, 35),
+    ("Ананас", 25, 50),
 ]
 
 app = Flask(__name__)
