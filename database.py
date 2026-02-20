@@ -424,7 +424,7 @@ class Database:
             rows = await cursor.fetchall()
             result = []
             name_map = {
-                'Ванильное': 'vanilla',
+                'Энергетик': 'energy',
                 'Шоколадное': 'chocolate',
                 'Клубничное': 'strawberry',
                 'Фисташковое': 'pistachio',
