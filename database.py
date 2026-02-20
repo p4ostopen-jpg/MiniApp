@@ -1,4 +1,5 @@
 import aiosqlite
+import os
 from datetime import datetime
 
 from database_extensions import run_migrations
@@ -6,7 +7,15 @@ from database_extensions import run_migrations
 
 class Database:
     def __init__(self):
-        self.db_path = 'shop.db'
+        # Use absolute path so API and bot share the same DB
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.db_path = os.path.join(base_dir, 'shop.db')
+
+    async def count_products(self) -> int:
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute('SELECT COUNT(*) FROM products')
+            row = await cursor.fetchone()
+            return int(row[0] or 0)
 
     async def create_tables(self):
         async with aiosqlite.connect(self.db_path) as db:

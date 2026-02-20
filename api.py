@@ -1,12 +1,13 @@
 """
 REST API для Mini App - связывает HTML (GitHub Pages) с базой данных.
-Запусти: uvicorn api:app --host 0.0.0.0 --port 8000
-Или: python api.py
+Запусти: python api.py
+Или (Flask CLI): flask --app api run --host 0.0.0.0 --port 8000
 """
 import asyncio
 import os
 import json
 import urllib.request
+import threading
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -52,10 +53,40 @@ IMAGE_MAP = {
 IMAGE_BASE = "https://p4ostopen-jpg.github.io/MiniApp/"
 DEFAULT_IMAGE = "ice-cream"
 
+# Дефолтные товары (чтобы магазин не был пустым, если бот ещё не запускали)
+DEFAULT_PRODUCTS = [
+    ("Ванильное", 100, 50),
+    ("Шоколадное", 120, 40),
+    ("Клубничное", 110, 30),
+    ("Фисташковое", 150, 25),
+    ("Карамельное", 130, 35),
+    ("Ананас", 100, 50),
+]
+
 app = Flask(__name__)
 CORS(app, origins=["*"])  # Mini App и GitHub Pages
 
 db = Database()
+
+_db_ready = False
+_db_lock = threading.Lock()
+
+
+def ensure_db_ready() -> None:
+    """Гарантирует, что таблицы созданы, даже если запускали не через python api.py."""
+    global _db_ready
+    if _db_ready:
+        return
+    with _db_lock:
+        if _db_ready:
+            return
+        asyncio.run(init_db())
+        _db_ready = True
+
+
+@app.before_request
+def _before_request_init_db():
+    ensure_db_ready()
 
 @app.route('/')
 def home():
@@ -76,9 +107,15 @@ def is_admin(user_id: int) -> bool:
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Id')
+    # Allow headers used by different Mini App versions / WebViews.
+    # (If Telegram cached an older index.html that sends Cache-Control/Pragma/Expires,
+    # preflight would succeed with 200 but browser will block the real GET unless
+    # these headers are explicitly allowed.)
+    response.headers.add(
+        'Access-Control-Allow-Headers',
+        'Content-Type, X-User-Id, Cache-Control, Pragma, Expires'
+    )
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
     # Prevent caching to ensure fresh data
     response.headers.add('Cache-Control', 'no-cache, no-store, must-revalidate')
     response.headers.add('Pragma', 'no-cache')
@@ -458,6 +495,13 @@ def admin_export_orders():
 
 async def init_db():
     await db.create_tables()
+    # Seed default products once (if DB is empty)
+    try:
+        if await db.count_products() == 0:
+            for name, price, qty in DEFAULT_PRODUCTS:
+                await db.add_product(name, price, qty)
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
