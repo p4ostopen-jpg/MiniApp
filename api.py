@@ -73,6 +73,14 @@ def home():
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
 
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Id')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
 
 def get_user_id(allow_body_fallback: bool = False) -> int:
     """Получить user_id из заголовка или body (Mini App передаёт при запросе)"""
