@@ -1148,10 +1148,19 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         // Инициализация Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-        tg.MainButton.hide();
+        console.log('=== Telegram WebApp Script Loading ===');
+        console.log('window.Telegram:', typeof window.Telegram);
+        
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            console.error('❌ Telegram.WebApp not available! This might not be running in Telegram.');
+        } else {
+            console.log('✅ Telegram.WebApp available');
+            tg.ready();
+            tg.expand();
+            tg.MainButton.hide();
+            console.log('Telegram initData:', tg.initData ? 'present' : 'missing');
+        }
 
         // Получить user из Telegram — initDataUnsafe или парсинг tgWebAppData из URL hash
         function getTelegramUser() {
@@ -1218,6 +1227,7 @@
             // Cache-busting timestamp for GET requests (Telegram WebView can be aggressive with caching)
             const separator = path.includes('?') ? '&' : '?';
             const cacheBuster = method === 'GET' ? `${separator}_t=${Date.now()}` : '';
+            const fullUrl = API_BASE_URL + path + cacheBuster;
 
             // Important: do NOT send extra request headers (Cache-Control/Pragma/Expires),
             // otherwise CORS preflight may fail if server doesn't allow them.
@@ -1235,12 +1245,35 @@
             };
             if (body !== null) opts.body = JSON.stringify(body);
 
-            const res = await fetch(API_BASE_URL + path + cacheBuster, opts);
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || `HTTP ${res.status}`);
+            console.log(`[API] ${method} ${fullUrl}`, { headers, body: body ? 'present' : null });
+
+            try {
+                const res = await fetch(fullUrl, opts);
+                console.log(`[API] Response status: ${res.status}`, res.headers);
+                
+                if (!res.ok) {
+                    const errText = await res.text().catch(() => '');
+                    let err;
+                    try {
+                        err = JSON.parse(errText);
+                    } catch {
+                        err = { error: errText || `HTTP ${res.status}` };
+                    }
+                    console.error(`[API] Error response:`, err);
+                    throw new Error(err.error || `HTTP ${res.status}`);
+                }
+                
+                const data = await res.json();
+                console.log(`[API] Success:`, data);
+                return data;
+            } catch (e) {
+                console.error(`[API] Fetch failed for ${fullUrl}:`, e);
+                // Re-throw with more context
+                if (e instanceof TypeError && e.message.includes('fetch')) {
+                    throw new Error(`Сеть недоступна. Проверь подключение и API URL: ${API_BASE_URL}`);
+                }
+                throw e;
             }
-            return res.json();
         }
 
         let appliedDiscount = 0;
@@ -1253,14 +1286,38 @@
             const grid = document.getElementById('products');
             loading.style.display = 'block';
             grid.style.opacity = '0.5';
+            
+            console.log('[loadCatalog] Starting...', { API_BASE_URL, currentUser });
+            
             try {
                 catalog = await apiRequest('GET', '/api/products');
-                renderProducts();
+                console.log('[loadCatalog] Received products:', catalog);
+                
+                if (!catalog || !Array.isArray(catalog)) {
+                    throw new Error('Некорректный формат ответа от API');
+                }
+                
+                if (catalog.length === 0) {
+                    console.warn('[loadCatalog] Catalog is empty!');
+                    grid.innerHTML = '<div class="empty-state">📦 Товаров пока нет. Добавьте их через админ-панель.</div>';
+                } else {
+                    renderProducts();
+                }
                 return true;
             } catch (e) {
-                console.error('Ошибка загрузки товаров:', e);
-                showToast('❌ Не удалось загрузить товары. Проверь API.', true);
-                grid.innerHTML = '<div class="empty-state">❌ Ошибка загрузки. <button onclick="loadCatalogFromAPI()" style="margin-top:12px;padding:8px 16px;background:#4a6fa5;color:white;border:none;border-radius:12px;cursor:pointer;">Повторить</button></div>';
+                console.error('[loadCatalog] Error:', e);
+                const errorMsg = e.message || 'Неизвестная ошибка';
+                showToast(`❌ ${errorMsg}`, true);
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        ❌ Ошибка загрузки: ${errorMsg}
+                        <br><br>
+                        <button onclick="loadCatalogFromAPI()" style="margin-top:12px;padding:8px 16px;background:#4a6fa5;color:white;border:none;border-radius:12px;cursor:pointer;">
+                            🔄 Повторить
+                        </button>
+                        <br><br>
+                        <small style="color:#999;">API: ${API_BASE_URL}</small>
+                    </div>`;
                 return false;
             } finally {
                 loading.style.display = 'none';
@@ -1270,7 +1327,12 @@
 
         function filterProducts() {
             const q = (document.getElementById('searchProducts').value || '').toLowerCase();
+            if (!catalog || !Array.isArray(catalog)) {
+                console.error('[filterProducts] Catalog is not an array!', catalog);
+                return;
+            }
             const filtered = q ? catalog.filter(p => p.name.toLowerCase().includes(q)) : catalog;
+            console.log('[filterProducts] Filtered products:', filtered.length, 'from', catalog.length);
             renderProductsToContainer(filtered, document.getElementById('products'));
         }
 
@@ -1541,6 +1603,15 @@
         // ==================== ТОВАРЫ ====================
 
         function renderProducts() {
+            console.log('[renderProducts] Called, catalog length:', catalog?.length || 0);
+            if (!catalog || catalog.length === 0) {
+                console.warn('[renderProducts] Catalog is empty or undefined!');
+                const grid = document.getElementById('products');
+                if (grid) {
+                    grid.innerHTML = '<div class="empty-state">📦 Товаров пока нет</div>';
+                }
+                return;
+            }
             filterProducts();
         }
 
@@ -2218,9 +2289,32 @@
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
         window.addEventListener('load', async () => {
+            console.log('=== Mini App Initialization ===');
+            console.log('Telegram WebApp:', typeof tg !== 'undefined' ? 'available' : 'not available');
+            console.log('Current user:', currentUser);
+            console.log('API Base URL:', API_BASE_URL);
+            console.log('User Agent:', navigator.userAgent);
+            
             updateCartCount();
             if (!currentUser.id) {
                 document.getElementById('openFromTelegramHint').style.display = 'flex';
+                console.warn('⚠️ User ID is 0 - open from Telegram bot button!');
+            }
+
+            // Test API connectivity first
+            try {
+                console.log('Testing API connectivity...');
+                const testRes = await fetch(`${API_BASE_URL}/api/health?_t=${Date.now()}`, {
+                    method: 'GET',
+                    cache: 'no-store'
+                });
+                console.log('API Health check:', testRes.status, testRes.ok);
+                if (!testRes.ok) {
+                    throw new Error(`API недоступен (${testRes.status})`);
+                }
+            } catch (e) {
+                console.error('❌ API connectivity test failed:', e);
+                showToast('⚠️ API недоступен. Проверь ngrok и API сервер.', true);
             }
 
             await loadCatalogFromAPI();
@@ -2229,9 +2323,9 @@
             showPage('main');
             showToast('🍦 Добро пожаловать!');
 
-            console.log('App loaded');
-            console.log('Current user ID:', currentUser.id);
-            console.log('Is admin:', currentUser.is_admin);
+            console.log('=== Initialization Complete ===');
+            console.log('Catalog items:', catalog.length);
+            console.log('Orders:', orders.length);
         });
 
         // ==================== ЭКСПОРТ ФУНКЦИЙ ====================
