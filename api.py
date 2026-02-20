@@ -79,6 +79,10 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Id')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
+    # Prevent caching to ensure fresh data
+    response.headers.add('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.add('Pragma', 'no-cache')
+    response.headers.add('Expires', '0')
     return response
 
 

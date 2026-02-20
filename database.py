@@ -174,7 +174,7 @@ class Database:
                     'Карамельное': 'caramel'
                 }
                 eng_name = name_map.get(p_dict['name'], 'ice-cream')
-                p_dict['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.jpg"
+                p_dict['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.png"
                 p_dict['stock'] = p_dict['quantity']
                 result.append(p_dict)
             return result

@@ -1180,7 +1180,7 @@
 
         // ==================== КОНФИГУРАЦИЯ API ====================
         const API_BASE_URL = "https://pleasurelessly-tingly-carlos.ngrok-free.dev";
-        
+
         // ==================== ДАННЫЕ ====================
         const ADMIN_IDS = [539040973];
 
@@ -1215,15 +1215,22 @@
         // ==================== API ЗАПРОСЫ ====================
 
         async function apiRequest(method, path, body = null) {
+            // Add cache-busting timestamp for GET requests
+            const separator = path.includes('?') ? '&' : '?';
+            const cacheBuster = method === 'GET' ? `${separator}_t=${Date.now()}` : '';
+            
             const opts = {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-User-Id': String(currentUser.id)
+                    'X-User-Id': String(currentUser.id),
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
                 }
             };
             if (body) opts.body = JSON.stringify(body);
-            const res = await fetch(API_BASE_URL + path, opts);
+            const res = await fetch(API_BASE_URL + path + cacheBuster, opts);
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.error || `HTTP ${res.status}`);
@@ -1365,12 +1372,19 @@
             }
         }
 
+        // Separate variable for admin products (includes products with 0 stock)
+        let adminCatalog = [];
+
         async function loadAdminProductsFromAPI() {
             if (!currentUser.is_admin) return;
             try {
-                catalog = await apiRequest('GET', '/api/admin/products');
+                // Load admin products for admin panel (includes products with 0 stock)
+                adminCatalog = await apiRequest('GET', '/api/admin/products');
                 renderAdminProducts();
-                renderProducts();
+                
+                // Refresh public catalog (for main view) - this filters out products with 0 stock
+                await loadCatalogFromAPI();
+                
                 updateAdminStats();
                 return true;
             } catch (e) {
@@ -1863,8 +1877,10 @@
 
         function renderAdminProducts() {
             const container = document.getElementById('adminProductsList');
+            // Use adminCatalog if available, otherwise fall back to catalog
+            const productsToShow = adminCatalog.length > 0 ? adminCatalog : catalog;
 
-            container.innerHTML = catalog.map(product => `
+            container.innerHTML = productsToShow.map(product => `
                 <div class="product-list-item">
                     <div class="product-list-info">
                         <h4>${product.name} ${product.image || '🍦'}</h4>
@@ -2056,16 +2072,22 @@
                 document.getElementById('newProductName').value = '';
                 document.getElementById('newProductPrice').value = '';
                 document.getElementById('newProductStock').value = '';
+                
+                // Refresh both admin and public catalogs
                 await loadAdminProductsFromAPI();
+                await loadCatalogFromAPI();
                 renderProducts();
             } catch (e) {
+                console.error('Ошибка сохранения товара:', e);
                 showToast('❌ Ошибка сохранения товара', true);
             }
         }
 
         function showUpdateStockModal() {
             const select = document.getElementById('updateProductSelect');
-            select.innerHTML = catalog.map(p =>
+            // Use adminCatalog if available (includes all products), otherwise catalog
+            const productsToShow = adminCatalog.length > 0 ? adminCatalog : catalog;
+            select.innerHTML = productsToShow.map(p =>
                 `<option value="${p.id}">${p.name} (${p.stock} шт.)</option>`
             ).join('');
             document.getElementById('updateStockModal').style.display = 'flex';
@@ -2080,9 +2102,13 @@
                 hideModal('updateStockModal');
                 document.getElementById('updateProductStock').value = '';
                 showToast(`📦 Остатки обновлены`);
+                
+                // Refresh both admin and public catalogs
                 await loadAdminProductsFromAPI();
+                await loadCatalogFromAPI();
                 renderProducts();
             } catch (e) {
+                console.error('Ошибка обновления остатков:', e);
                 showToast('❌ Ошибка обновления остатков', true);
             }
         }
@@ -2107,15 +2133,20 @@
             try {
                 await apiRequest('DELETE', `/api/admin/products/${productId}`);
                 showToast(`❌ Товар "${product ? product.name : ''}" удален`);
+                
+                // Refresh both admin and public catalogs
                 await loadAdminProductsFromAPI();
+                await loadCatalogFromAPI();
                 renderProducts();
             } catch (e) {
+                console.error('Ошибка удаления товара:', e);
                 showToast('❌ Ошибка удаления товара', true);
             }
         }
 
         function showEditProductModal(productId) {
-            const product = catalog.find(p => p.id === productId);
+            // Check both adminCatalog and catalog
+            const product = (adminCatalog.length > 0 ? adminCatalog : catalog).find(p => p.id === productId);
             if (!product) return;
             document.getElementById('editProductId').value = productId;
             document.getElementById('addProductModalTitle').innerText = '✏️ Редактировать товар';
@@ -2225,5 +2256,7 @@
         window.completeOrder=completeOrder;
         window.hideModal=hideModal
     </script>
+</body>
+</html>
 </body>
 </html>
