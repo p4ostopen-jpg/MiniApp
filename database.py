@@ -176,11 +176,11 @@ class Database:
             for p in products:
                 p_dict = dict(p)
                 name_map = {
-                    'Ванильное': 'vanilla',
-                    'Шоколадное': 'chocolate',
+                    'Энергетик': 'energy',
+                    'Черешня-лимон': 'Cherrylemon',
                     'Клубничное': 'strawberry',
-                    'Фисташковое': 'pistachio',
-                    'Карамельное': 'caramel'
+                    'Тропическое': 'tropical',
+                    'Арбуз-черника': 'watermelonraspberry'
                 }
                 eng_name = name_map.get(p_dict['name'], 'ice-cream')
                 p_dict['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.png"
