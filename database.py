@@ -425,10 +425,10 @@ class Database:
             result = []
             name_map = {
                 'Энергетик': 'energy',
-                'Шоколадное': 'chocolate',
+                'Черешня-лимон': 'Cherrylemon',
                 'Клубничное': 'strawberry',
-                'Фисташковое': 'pistachio',
-                'Карамельное': 'caramel'
+                'Тропическое': 'tropical',
+                'Арбуз-черника': 'watermelonraspberry'
             }
             for p in rows:
                 p_dict = dict(p)

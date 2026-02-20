@@ -116,11 +116,11 @@ async def main():
 
     # Добавляем тестовые товары
     try:
-        await db.add_product("Ванильное", 100, 50)
-        await db.add_product("Шоколадное", 120, 40)
-        await db.add_product("Клубничное", 110, 30)
-        await db.add_product("Фисташковое", 150, 25)
-        await db.add_product("Карамельное", 130, 35)
+        await db.add_product("Энергетик", 25, 50)
+        await db.add_product("Тропическое", 25, 40)
+        await db.add_product("Клубничное", 25, 30)
+        await db.add_product("Арбуз-черника", 25, 25)
+        await db.add_product("Черешня-лимон", 25, 35)
         logger.info("✅ Тестовые товары добавлены")
     except Exception as e:
         logger.info(f"📦 Товары уже существуют")
