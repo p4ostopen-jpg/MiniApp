@@ -182,3 +182,4 @@ cython_debug/
 .cursorindexingignore
 *.xml
 *.db
+shop.db
