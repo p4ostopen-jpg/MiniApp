@@ -182,9 +182,9 @@ class Database:
                     'Вишня-лимон': 'Cherrylemon',
                     'Енергетик': 'energy',
                     'Тропік': 'tropical',
-                    'Кавун-малина': 'watermelonraspberry',
+                    'Тост з чорницею': 'blackberrytoast',
                     'Чорниця-малина': 'blueberryraspberry',
-                    'Кавунові цукерки': 'sourwatermeloncandy',
+                    'Ягоди з хвоєю': 'berryneedles',
                     'Повітря з Говерли': 'goverla',
                 }
                 eng_name = name_map.get(p_dict['name'], 'ice-cream')
@@ -435,9 +435,9 @@ class Database:
                 'Вишня-лимон': 'Cherrylemon',
                 'Енергетик':'energy',
                 'Тропік':'tropical',
-                'Кавун-малина':'watermelonraspberry',
+                'Тост з чорницею':'blackberrytoast',
                 'Чорниця-малина':'blueberryraspberry',
-                'Кавунові цукерки':'sourwatermeloncandy',
+                'Ягоди з хвоєю':'berryneedles',
                 'Повітря з Говерли':'goverla',
             }
             for p in rows:
@@ -470,13 +470,13 @@ class Database:
         """Проверяет промокод и возвращает discount_amount или None"""
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
-                'SELECT discount_fixed, min_order, uses_left, valid_until FROM promo_codes WHERE code = ?',
+                'SELECT discount_percent, discount_fixed, min_order, uses_left, valid_until FROM promo_codes WHERE code = ?',
                 (code.strip().upper(),)
             )
             row = await cursor.fetchone()
             if not row:
                 return None
-            fixed, min_order, uses_left, valid_until = row
+            pct, fixed, min_order, uses_left, valid_until = row
             if uses_left <= 0:
                 return None
             if valid_until:
@@ -485,8 +485,8 @@ class Database:
                     return None
             if min_order and subtotal < min_order:
                 return {"error": f"Минимальный заказ {min_order} €"}
-            # Возвращаем фиксированную скидку, но не больше суммы заказа
-            return {"discount": min(fixed, subtotal)}
+            discount = (subtotal * pct // 100) + (fixed or 0)
+            return {"discount": min(discount, subtotal)}
 
     async def get_analytics(self):
         """Аналитика для админки"""
