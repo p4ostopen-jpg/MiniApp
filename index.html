@@ -946,8 +946,8 @@
         <!-- Навигация -->
         <div class="nav-menu">
             <button class="nav-btn active" onclick="showPage('main')">🔍 Меню</button>
-            <button class="nav-btn" onclick="showPage('cart')">🛒 Корзина</button>
-            <button class="nav-btn" onclick="showPage('orders')">📋 Заказы</button>
+            <button class="nav-btn" onclick="showPage('cart')">🛒 Кошик</button>
+            <button class="nav-btn" onclick="showPage('orders')">📋 Замовлення</button>
             <button class="nav-btn admin-btn" onclick="showPage('admin')" id="adminNavBtn" style="display: none;">👨‍💼 Админ</button>
         </div>
 
@@ -963,13 +963,13 @@
                      alt="Chaser"
                      style="width: auto; height: auto; object-fit: contain; margin-bottom: 10px;">
                 <h1>Жи Ши</h1>
-                <p>Жижа для под-систем с доставкой</p>
+                <p>Ароматизатори для под-систем</p>
             </div>
-            <input type="text" id="searchProducts" class="search-bar" placeholder="🔍 Поиск товаров..." oninput="filterProducts()">
-            <div class="pull-refresh-hint" id="pullRefreshHint" onclick="refreshMain()" style="cursor:pointer;">↓ Нажмите для обновления</div>
+            <input type="text" id="searchProducts" class="search-bar" placeholder="🔍 Пошук товарів..." oninput="filterProducts()">
+            <div class="pull-refresh-hint" id="pullRefreshHint" onclick="refreshMain()" style="cursor:pointer;">↓ Натисніть для оновлення</div>
             <div id="productsLoading" class="loading-overlay" style="display:none;">
                 <div class="loading-spinner"></div>
-                <p>Загрузка...</p>
+                <p>Завантажую...</p>
             </div>
             <div id="products" class="products-grid"></div>
         </div>
@@ -977,7 +977,7 @@
         <!-- Страница корзины -->
         <div id="cartPage" style="display:none;">
             <div class="header">
-                <h1>🛒 Корзина</h1>
+                <h1>🛒 Кошик</h1>
             </div>
             <div id="cartItems"></div>
             <div id="cartTotal" class="cart-total">0 €</div>
@@ -985,38 +985,38 @@
             <div class="location-section">
                 <div id="locationPermission" class="location-permission" style="display: none;">
                     <span>📍 Для автоматического определения адреса разрешите доступ к геолокации</span>
-                    <button onclick="requestLocationPermission()">Разрешить</button>
+                    <button onclick="requestLocationPermission()">Дозволити</button>
                 </div>
                 <div class="saved-addresses" id="savedAddresses"></div>
                 <div class="location-buttons">
                     <button class="location-btn" onclick="getLocation()" id="locationBtn">
-                        📍 Указать местоположение
+                        📍 Вказати місцезнаходження
                     </button>
                 </div>
-                <input type="text" id="location" class="location-input" placeholder="✏️ Или введите адрес доставки">
+                <input type="text" id="location" class="location-input" placeholder="✏️ Або введіть адресу">
                 <select id="deliverySlot" class="location-input">
-                    <option value="">🕐 Удобное время доставки (любое)</option>
-                    <option value="morning">Утро (9-12)</option>
+                    <option value="">🕐 Зручний час доставки (будь-який)</option>
+                    <option value="morning">Ранок (9-12)</option>
                     <option value="day">День (12-18)</option>
-                    <option value="evening">Вечер (18-22)</option>
+                    <option value="evening">Вечір (18-24)</option>
                 </select>
-                <input type="text" id="orderNotes" class="location-input" placeholder="📝 Комментарий к заказу (необязательно)">
+                <input type="text" id="orderNotes" class="location-input" placeholder="📝 Коментарій (необов'язково)">
                 <div class="promo-input-wrap">
                     <input type="text" id="promoCode" class="location-input" placeholder="🎟 Промокод">
-                    <button class="location-btn" style="padding: 12px 20px;" onclick="applyPromo()">Применить</button>
+                    <button class="location-btn" style="padding: 12px 20px;" onclick="applyPromo()">Використати</button>
                 </div>
                 <div id="promoStatus" class="promo-applied" style="display:none;"></div>
-                <button class="checkout-btn" onclick="checkout()">✅ Оформить заказ</button>
+                <button class="checkout-btn" onclick="checkout()">✅ Оформити замовлення</button>
             </div>
         </div>
 
         <!-- Страница заказов -->
         <div id="ordersPage" style="display:none;">
             <div class="header">
-                <h1>📋 Мои заказы</h1>
-                <p>Только ваши заказы и их статусы</p>
+                <h1>📋 Мої замовлення</h1>
+                <p>Мої замовлення та їх статус</p>
             </div>
-            <div class="pull-refresh-hint" onclick="loadOrdersFromAPI(); showToast('Обновлено')" style="cursor:pointer;">↻ Обновить</div>
+            <div class="pull-refresh-hint" onclick="loadOrdersFromAPI(); showToast('Оновлено')" style="cursor:pointer;">↻ Оновити</div>
             <div id="orders"></div>
         </div>
 
@@ -1340,7 +1340,7 @@
         function renderProductsToContainer(products, container) {
             if (!container) container = document.getElementById('products');
             if (!products || products.length === 0) {
-                container.innerHTML = '<div class="empty-state">🔍 Ничего не найдено</div>';
+                container.innerHTML = '<div class="empty-state">🔍 Нічого не знайдено</div>';
                 return;
             }
             container.innerHTML = products.map(product => {
@@ -1354,7 +1354,7 @@
                     </div>
                     <div class="product-name">${product.name}</div>
                     <div class="product-price">${product.price} €</div>
-                    <div class="product-stock">${isAvailable ? `✅ В наличии: ${product.stock} шт.` : '❌ Нет в наличии'}</div>
+                    <div class="product-stock">${isAvailable ? `✅ В наявності: ${product.stock} од.` : '❌ Нет в наличии'}</div>
                     ${isAvailable ? `
                     <div class="product-actions">
                         <div class="qty-selector">
@@ -1389,13 +1389,13 @@
                 if (r.valid) {
                     appliedDiscount = r.discount;
                     document.getElementById('promoStatus').style.display = 'block';
-                    document.getElementById('promoStatus').textContent = `✅ Скидка ${r.discount} €`;
+                    document.getElementById('promoStatus').textContent = `✅ Знижка ${r.discount} €`;
                     document.getElementById('promoStatus').style.color = '#2d7a4b';
                     renderCart();
-                    showToast(`Промокод применён! Скидка ${r.discount} €`);
+                    showToast(`Промокод викоритсано! Знижка ${r.discount} €`);
                 } else {
                     appliedDiscount = 0;
-                    document.getElementById('promoStatus').textContent = '❌ ' + (r.error || 'Промокод недействителен');
+                    document.getElementById('promoStatus').textContent = '❌ ' + (r.error || 'Тактй промо ще не додали');
                     document.getElementById('promoStatus').style.color = '#c62828';
                     document.getElementById('promoStatus').style.display = 'block';
                 }
@@ -1470,7 +1470,7 @@
                 try {
                     cart = JSON.parse(savedCart);
                 } catch (e) {
-                    console.error('Ошибка загрузки корзины');
+                    console.error('Помилка завантаження кошика');
                 }
             }
         }
@@ -1619,7 +1619,7 @@
         async function refreshMain() {
             await loadCatalogFromAPI();
             await loadOrdersFromAPI();
-            showToast('✅ Обновлено');
+            showToast('✅ Оновлено');
         }
 
         function increaseQty(id) {
@@ -1668,7 +1668,7 @@
             renderSavedAddresses();
 
             if (cart.length === 0) {
-                container.innerHTML = '<div class="empty-state">🛒 Корзина пуста. Добавьте товары из меню</div>';
+                container.innerHTML = '<div class="empty-state">🛒 Кошик порожній. Додайте товари з меню</div>';
                 document.getElementById('cartTotal').innerText = '0 €';
                 appliedDiscount = 0;
                 document.getElementById('promoStatus').style.display = 'none';
@@ -1791,7 +1791,7 @@
                 renderCart();
                 document.getElementById('location').value = '';
 
-                showToast('✅ Заказ оформлен!');
+                showToast('✅ Замовлення оформлено!');
                 showPage('orders');
                 await loadOrdersFromAPI();
             } catch (e) {
@@ -1805,7 +1805,7 @@
             if (!container) return;
 
             if (orders.length === 0) {
-                container.innerHTML = '<div class="empty-state">📋 У вас пока нет заказов<br><small>Ваши заказы появятся здесь после оформления</small></div>';
+                container.innerHTML = '<div class="empty-state">📋 У вас поки немає замовлень<br><small>Замовлення будуть тут після оформлення </small></div>';
                 return;
             }
 
@@ -1815,13 +1815,13 @@
                 return `
                     <div class="order-card">
                         <div class="order-header">
-                            <span class="order-id">Заказ #${order.id}</span>
+                            <span class="order-id">Замовлення #${order.id}</span>
                             <span class="order-status ${statusClass}">${order.status_text}</span>
                         </div>
 
                         <div class="order-info">
                             <div class="order-info-item">
-                                <span>📍 Адрес:</span>
+                                <span>📍 Адреса:</span>
                                 <span>${order.location}</span>
                             </div>
                             <div class="order-info-item">
@@ -1850,7 +1850,7 @@
                         <div class="order-total">
                             Итого: ${order.total} €
                         </div>
-                        ${order.status !== 'cancelled' ? `<button class="reorder-btn" onclick="reorder(${order.id})">🔄 Повторить заказ</button>` : ''}
+                        ${order.status !== 'cancelled' ? `<button class="reorder-btn" onclick="reorder(${order.id})">🔄 Повторити замовлення</button>` : ''}
                     </div>
                 `;
             }).join('');
@@ -1871,7 +1871,7 @@
             saveCart();
             renderCart();
             showPage('cart');
-            showToast('✅ Товары добавлены в корзину');
+            showToast('✅ Товари додані до кошику');
         }
 
         // ==================== АДМИН ПАНЕЛЬ ====================

@@ -31,7 +31,7 @@ async def start(message: Message):
 
     # Проверяем, является ли пользователь админом
     is_admin = message.from_user.id in ADMIN_IDS
-    admin_status = "👨‍💼 Администратор" if is_admin else "👤 Покупатель"
+    admin_status = "👨‍💼 Администратор" if is_admin else "👤 Покупець"
 
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
@@ -44,9 +44,9 @@ async def start(message: Message):
     )
 
     await message.answer(
-        f"👋 Привет, {message.from_user.first_name}!\n"
+        f"👋 Привіт, {message.from_user.first_name}!\n"
         f"Статус: {admin_status}\n"
-        f"Нажми кнопку ниже, чтобы открыть магазин:",
+        f"Натисни кнопку нижче, щоб відкрити магазин:",
         reply_markup=keyboard
     )
 
@@ -77,9 +77,20 @@ async def web_app_handler(message: Message):
                     f"🆕 НОВЫЙ ЗАКАЗ #{order_data.get('id')}\n"
                     f"👤 {message.from_user.full_name} (@{message.from_user.username})\n"
                     f"📍 {order_data.get('location')}\n"
-                    f"💰 Сумма: {order_data.get('total')}€\n\n"
-                    f"📦 Товары:\n"
+                    f"💰 Сумма: {order_data.get('total')}€\n"
                 )
+
+                # Добавляем промокод если есть
+                if order_data.get('promo_code'):
+                    order_text += f"🎟 Промокод: {order_data.get('promo_code')}\n"
+                if order_data.get('discount_amount', 0) > 0:
+                    order_text += f"💰 Скидка: {order_data.get('discount_amount')}€\n"
+
+                # Добавляем комментарий если есть
+                if order_data.get('notes'):
+                    order_text += f"📝 Комментарий: {order_data.get('notes')}\n"
+
+                order_text += f"\n📦 Товары:\n"
 
                 for item in order_data.get('items', []):
                     order_text += f"• {item['name']} x{item['quantity']} - {item['price'] * item['quantity']}€\n"
@@ -94,7 +105,7 @@ async def web_app_handler(message: Message):
 
                 # Отправляем всем админам
                 for admin_id in ADMIN_IDS:
-                    if admin_id != message.from_user.id:  # Не отправляем самому себе
+                    if admin_id != message.from_user.id:
                         try:
                             await bot.send_message(admin_id, order_text)
                             logger.info(f"Уведомление отправлено админу {admin_id}")
@@ -109,7 +120,6 @@ async def web_app_handler(message: Message):
         logger.error(f"❌ Ошибка парсинга JSON: {e}")
     except Exception as e:
         logger.error(f"❌ Общая ошибка: {e}")
-
 
 async def main():
     await db.create_tables()

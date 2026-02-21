@@ -16,19 +16,34 @@ from database import Database
 from config import ADMIN_IDS, BOT_TOKEN, SELLER_ID
 
 
-def send_telegram_notification(order_id: int, user_name: str, username: str, location: str, total: int, items: list):
-    """Отправляет уведомление о новом заказе продавцу и админам (без закрытия Mini App)"""
+def send_telegram_notification(order_id: int, user_name: str, username: str, location: str, total: int, items: list,
+                               notes: str = '', promo_code: str = '', discount_amount: int = 0):
+    """Отправляет уведомление о новом заказе продавцу и админам"""
     text = (
         f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n"
         f"👤 {user_name} (@{username or '—'})\n"
         f"📍 {location}\n"
-        f"💰 Сумма: {total} €\n\n"
-        f"📦 Товары:\n"
+        f"💰 Сумма: {total} €\n"
     )
+
+    # Добавляем информацию о промокоде и скидке
+    if promo_code:
+        text += f"🎟 Промокод: {promo_code}\n"
+    if discount_amount > 0:
+        text += f"💰 Скидка: {discount_amount} €\n"
+
+    # Добавляем комментарий если есть
+    if notes:
+        text += f"📝 Комментарий: {notes}\n"
+
+    text += f"\n📦 Товары:\n"
+
     for item in items:
         text += f"• {item.get('name', '?')} x{item.get('quantity', 0)} - {item.get('price', 0) * item.get('quantity', 0)} €\n"
+
     recipients = list(set([int(SELLER_ID)] + list(ADMIN_IDS))) if int(SELLER_ID) else list(ADMIN_IDS)
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
     for chat_id in recipients:
         if not chat_id:
             continue
@@ -36,8 +51,8 @@ def send_telegram_notification(order_id: int, user_name: str, username: str, loc
             req = urllib.request.Request(url, data=json.dumps({"chat_id": chat_id, "text": text}).encode(),
                                          headers={"Content-Type": "application/json"}, method="POST")
             urllib.request.urlopen(req, timeout=5)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Ошибка отправки уведомления {chat_id}: {e}")
 
 
 # Карта названий -> файлы картинок (как в Mini App)
@@ -51,7 +66,7 @@ IMAGE_MAP = {
     'Кавун-малина': 'watermelonraspberry',
     'Чорниця-малина': 'blueberryraspberry',
     'Кавунові цукерки': 'sourwatermeloncandy',
-    'Повітря з Говерли': 'gobverla',
+    'Повітря з Говерли': 'goverla',
 }
 IMAGE_BASE = "https://p4ostopen-jpg.github.io/MiniApp/"
 DEFAULT_IMAGE = "ice-cream"
@@ -265,9 +280,13 @@ def create_order():
             total = sum(i.get("price", 0) * i.get("quantity", 0) for i in items) - discount_amount
             if total < 0:
                 total = 0
-            send_telegram_notification(order_id, user_name, username, location, total, items)
-        except Exception:
-            pass
+            # Передаем notes, promo_code, discount_amount
+            send_telegram_notification(
+                order_id, user_name, username, location, total, items,
+                notes=notes, promo_code=promo_code, discount_amount=discount_amount
+            )
+        except Exception as e:
+            print(f"Ошибка отправки уведомления: {e}")
         return jsonify({"success": True, "order_id": order_id})
     return jsonify({"error": "Order creation failed"}), 500
 
