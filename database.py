@@ -431,7 +431,7 @@ class Database:
             name_map = {
                 'Ягідний Лимонад':'berrylemonade',
                 'Мятний Виноград':'grapemint',
-                'Мятна чорника':'blueberrymint',
+                'Мятна чорника':'1blueberrymint',
                 'Вишня-лимон': 'cherrylemon',
                 'Енергетик':'energy',
                 'Тропік':'tropical',

@@ -44,7 +44,7 @@ def send_telegram_notification(order_id: int, user_name: str, username: str, loc
 IMAGE_MAP = {
     'Ягідний Лимонад': 'berrylemonade',
     'Мятний Виноград': 'grapemint',
-    'Мятна чорника': 'blueberrymint',
+    'Мятна чорника': '1blueberrymint',
     'Вишня-лимон': 'cherrylemon',
     'Енергетик': 'energy',
     'Тропік': 'tropical',
@@ -60,8 +60,8 @@ DEFAULT_IMAGE = "ice-cream"
 
 DEFAULT_PRODUCTS = [
     ("Ягідний Лимонад", 25, 35),
-    ("М'ятний Виноград", 25, 50),
-    ("М'ятна чорника", 25, 50),
+    ("Мятний Виноград", 25, 50),
+    ("Мятна чорника", 25, 50),
     ("Вишня-лимон", 25, 40),
     ("Енергетик", 25, 50),
     ("Тропік", 25, 25),
