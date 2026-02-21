@@ -45,7 +45,7 @@ IMAGE_MAP = {
     'Ягідний Лимонад': 'berrylemonade',
     'Мятний Виноград': 'grapemint',
     'Мятна чорника': '1blueberrymint',
-    'Вишня-лимон': 'cherrylemon',
+    'Вишня-лимон': 'Cherrylemon',
     'Енергетик': 'energy',
     'Тропік': 'tropical',
     'Кавун-малина': 'watermelonraspberry',
