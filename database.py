@@ -424,11 +424,16 @@ class Database:
             rows = await cursor.fetchall()
             result = []
             name_map = {
-                'Энергетик': 'energy',
-                'Черешня-лимон': 'Cherrylemon',
-                'Клубничное': 'strawberry',
-                'Тропическое': 'tropical',
-                'Арбуз-черника': 'watermelonraspberry'
+                'Ягідний Лимонад':'berrylemonade',
+                'Мятний Виноград':'grapemint',
+                'Мятна чорника':'blueberrymint',
+                'Вишня-лимон': 'cherrylemon',
+                'Енергетик':'energy',
+                'Тропік':'tropical',
+                'Кавун-малина':'watermelonraspberry',
+                'Чорниця-малина':'blueberryraspberry',
+                'Кавунові цукерки':'sourwatermeloncandy',
+                'Повітря з Говерли':'gobverla',
             }
             for p in rows:
                 p_dict = dict(p)

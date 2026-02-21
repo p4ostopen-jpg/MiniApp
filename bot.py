@@ -119,7 +119,7 @@ async def main():
         await db.add_product("Энергетик", 25, 50)
         await db.add_product("Тропическое", 25, 40)
         await db.add_product("Клубничное", 25, 30)
-        await db.add_product("Арбуз-черника", 25, 25)
+        await db.add_product("Арбуз-малина", 25, 25)
         await db.add_product("Черешня-лимон", 25, 35)
         logger.info("✅ Тестовые товары добавлены")
     except Exception as e:

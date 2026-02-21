@@ -42,12 +42,16 @@ def send_telegram_notification(order_id: int, user_name: str, username: str, loc
 
 # Карта названий -> файлы картинок (как в Mini App)
 IMAGE_MAP = {
-    "Клубничное": "strawberry",
-    "Энергетик": "energy",
-    "Черешня-лимон": "Cherrylemon",
-    "Тропическое": "tropical",
-    "Арбуз-малина": "watermelonraspberry",
-    "Ананас": "pineapple",
+    'Ягідний Лимонад': 'berrylemonade',
+    'Мятний Виноград': 'grapemint',
+    'Мятна чорника': 'blueberrymint',
+    'Вишня-лимон': 'cherrylemon',
+    'Енергетик': 'energy',
+    'Тропік': 'tropical',
+    'Кавун-малина': 'watermelonraspberry',
+    'Чорниця-малина': 'blueberryraspberry',
+    'Кавунові цукерки': 'sourwatermeloncandy',
+    'Повітря з Говерли': 'gobverla',
 }
 IMAGE_BASE = "https://p4ostopen-jpg.github.io/MiniApp/"
 DEFAULT_IMAGE = "ice-cream"
@@ -55,12 +59,16 @@ DEFAULT_IMAGE = "ice-cream"
 # Дефолтные товары (чтобы магазин не был пустым, если бот ещё не запускали)
 
 DEFAULT_PRODUCTS = [
-    ("Энергетик", 25, 50),
-    ("Черешня-лимон", 25, 40),
-    ("Клубничное", 25, 30),
-    ("Тропическое", 25, 25),
-    ("Арбуз-черника", 25, 35),
-    ("Ананас", 25, 50),
+    ("Ягідний Лимонад", 25, 35),
+    ("М'ятний Виноград", 25, 50),
+    ("М'ятна чорника", 25, 50),
+    ("Вишня-лимон", 25, 40),
+    ("Енергетик", 25, 50),
+    ("Тропік", 25, 25),
+    ("Кавун-малина", 25, 35),
+    ("Чорниця-малина", 25, 30),
+    ("Кавунові цукерки", 25, 50),
+    ("Повітря з Говерли", 25, 30),
 ]
 
 app = Flask(__name__)
