@@ -65,8 +65,8 @@ IMAGE_MAP = {
     'Тропік': 'tropical',
     'Тост з чорницею': 'blackberrytoast',
     'Чорниця-малина': 'blueberryraspberry',
-    'Ягоди з хвоєю': 'berry needles',
-    'Повітря з Говерли': 'goverla',
+    'Ягоди з хвоєю': 'berryneedles',
+    'Лічі-маракуя': 'lycheepassion',
 }
 IMAGE_BASE = "https://p4ostopen-jpg.github.io/MiniApp/"
 DEFAULT_IMAGE = "ice-cream"
@@ -83,7 +83,7 @@ DEFAULT_PRODUCTS = [
     ("Тост з чорницею", 25, 35),
     ("Чорниця-малина", 25, 30),
     ("Ягоди з хвоєю", 25, 50),
-    ("Повітря з Говерли", 25, 30),
+    ("Лічі-маракуя", 25, 30),
 ]
 
 app = Flask(__name__)

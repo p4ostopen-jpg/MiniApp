@@ -69,16 +69,13 @@ async def run_migrations(db_path: str):
         # Тестовый промокод
         await db.execute('''
             INSERT OR IGNORE INTO promo_codes (code, discount_percent, min_order, uses_left)
-            VALUES ('SALE20', 20, 25, 999)
+            VALUES ('OMAR20', 20, 25, 999)
         ''')
         await db.execute('''
             INSERT OR IGNORE INTO promo_codes (code, discount_fixed, min_order, uses_left)
-            VALUES ('S10', 10, 100, 999)
+            VALUES ('S10', 0, 100, 999)
         ''')
-        await db.execute('''
-            INSERT OR IGNORE INTO promo_codes (code, discount_fixed, min_order, uses_left)
-            VALUES ('S25', 25, 200, 999)
-        ''')
+
 
 
         await db.commit()

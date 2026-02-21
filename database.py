@@ -185,7 +185,7 @@ class Database:
                     'Тост з чорницею': 'blackberrytoast',
                     'Чорниця-малина': 'blueberryraspberry',
                     'Ягоди з хвоєю': 'berryneedles',
-                    'Повітря з Говерли': 'goverla',
+                    'Лічі-маракуя': 'lycheepassion',
                 }
                 eng_name = name_map.get(p_dict['name'], 'ice-cream')
                 p_dict['image_url'] = f"https://p4ostopen-jpg.github.io/MiniApp/{eng_name}.png"
@@ -438,7 +438,7 @@ class Database:
                 'Тост з чорницею':'blackberrytoast',
                 'Чорниця-малина':'blueberryraspberry',
                 'Ягоди з хвоєю':'berryneedles',
-                'Повітря з Говерли':'goverla',
+                'Лічі-маракуя':'lycheepassion',
             }
             for p in rows:
                 p_dict = dict(p)
