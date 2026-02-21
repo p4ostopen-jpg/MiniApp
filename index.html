@@ -1382,20 +1382,23 @@
 
         async function applyPromo() {
             const code = document.getElementById('promoCode').value.trim();
-            if (!code) { showToast('Введите промокод', true); return; }
+            if (!code) {
+                showToast('Введіть промокод', true);
+                return;
+            }
             const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
             try {
-                const r = await apiRequest('POST', '/api/promo/validate', { code, subtotal });
+                const r = await apiRequest('POST', '/api/promo/validate', {code, subtotal});
                 if (r.valid) {
                     appliedDiscount = r.discount;
                     document.getElementById('promoStatus').style.display = 'block';
                     document.getElementById('promoStatus').textContent = `✅ Знижка ${r.discount} €`;
                     document.getElementById('promoStatus').style.color = '#2d7a4b';
                     renderCart();
-                    showToast(`Промокод викоритсано! Знижка ${r.discount} €`);
+                    showToast(`Промокод використано! Знижка ${r.discount} €`);
                 } else {
                     appliedDiscount = 0;
-                    document.getElementById('promoStatus').textContent = '❌ ' + (r.error || 'Тактй промо ще не додали');
+                    document.getElementById('promoStatus').textContent = '❌ ' + (r.error || 'Такий промо ще не додали');
                     document.getElementById('promoStatus').style.color = '#c62828';
                     document.getElementById('promoStatus').style.display = 'block';
                 }

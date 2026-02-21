@@ -471,7 +471,7 @@ def validate_promo():
         return await db.validate_promo(code, subtotal)
     result = asyncio.run(_())
     if result is None:
-        return jsonify({"valid": False, "error": "Промокод недействителен"})
+        return jsonify({"valid": False, "error": "Такий промо ще не додали"})
     if isinstance(result, dict) and "error" in result:
         return jsonify({"valid": False, "error": result["error"]})
     return jsonify({"valid": True, "discount": result["discount"]})
