@@ -178,8 +178,8 @@ class Database:
                 name_map = {
                     'Ягідний Лимонад': 'berrylemonade',
                     'Мятний Виноград': 'grapemint',
-                    'Мятна чорника': 'blueberrymint',
-                    'Вишня-лимон': 'cherrylemon',
+                    'Мятна чорника': '1blueberrymint',
+                    'Вишня-лимон': 'Cherrylemon',
                     'Енергетик': 'energy',
                     'Тропік': 'tropical',
                     'Кавун-малина': 'watermelonraspberry',
