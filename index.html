@@ -1003,7 +1003,7 @@
                 <input type="text" id="orderNotes" class="location-input" placeholder="📝 Коментарій (необов'язково)">
                 <div class="promo-input-wrap">
                     <input type="text" id="promoCode" class="location-input" placeholder="🎟 Промокод">
-                    <button class="location-btn" style="padding: 12px 20px;" onclick="applyPromo()">Використати</button>
+                    <button class="location-btn" style="padding: 12px 20px;" onclick="applyPromo(false)">Використати</button>
                 </div>
                 <div id="promoStatus" class="promo-applied" style="display:none;"></div>
                 <button class="checkout-btn" onclick="checkout()">✅ Оформити замовлення</button>
@@ -1380,13 +1380,20 @@
             filterProducts();
         }
 
-        async function applyPromo() {
+        async function applyPromo(silent = false) {
             const code = document.getElementById('promoCode').value.trim();
             if (!code) {
-                showToast('Введіть промокод', true);
+                if (!silent) showToast('Введіть промокод', true);
                 return;
             }
+
             const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+
+            if (cart.length === 0) {
+                if (!silent) showToast('🛒 Кошик порожній', true);
+                return;
+            }
+
             try {
                 const r = await apiRequest('POST', '/api/promo/validate', {code, subtotal});
                 if (r.valid) {
@@ -1395,20 +1402,21 @@
                     document.getElementById('promoStatus').textContent = `✅ Знижка ${r.discount} €`;
                     document.getElementById('promoStatus').style.color = '#2d7a4b';
                     renderCart();
-                    showToast(`Промокод використано! Знижка ${r.discount} €`);
+                    if (!silent) showToast(`Промокод використано! Знижка ${r.discount} €`);
                 } else {
                     appliedDiscount = 0;
                     document.getElementById('promoStatus').textContent = '❌ ' + (r.error || 'Такий промо ще не додали');
                     document.getElementById('promoStatus').style.color = '#c62828';
                     document.getElementById('promoStatus').style.display = 'block';
+                    renderCart();
                 }
             } catch (e) {
+                console.error('Помилка використання промокода:', e);
                 appliedDiscount = 0;
-                document.getElementById('promoStatus').textContent = '❌ Ошибка проверки';
-                document.getElementById('promoStatus').style.display = 'block';
+                renderCart();
+                if (!silent) showToast('❌ Помилка перевірки промокода', true);
             }
         }
-
         function showConfirm(message, onConfirm) {
             document.getElementById('confirmMessage').textContent = message;
             document.getElementById('confirmModal').style.display = 'flex';
@@ -1722,7 +1730,7 @@
             }
         }
 
-        function updateCart(productId, change) {
+        async function updateCart(productId, change) {
             const item = cart.find(i => i.id === productId);
             if (!item) return;
 
@@ -1732,8 +1740,13 @@
                 cart = cart.filter(i => i.id !== productId);
             }
 
-            renderCart();
             saveCart();
+            renderCart();
+
+            // Просто пересчитываем промокод если он есть
+            if (document.getElementById('promoCode').value.trim()) {
+                await applyPromo(); // Просто вызываем существующую функцию
+            }
         }
 
         function updateCartCount() {
