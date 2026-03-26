@@ -8,6 +8,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from config import BOT_TOKEN, SELLER_ID, ADMIN_IDS
 from database import Database
 from admin import router as admin_router
+from products_catalog import default_products
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -124,26 +125,13 @@ async def web_app_handler(message: Message):
 async def main():
     await db.create_tables()
 
-    # Добавляем тестовые товары
-
-    # bot.py - замените на:
+    # Seed default products from a single catalog file (only when DB is empty)
     try:
-        products = [
-            ("Ягідний Лимонад", 25, 35),
-            ("Мятний Виноград", 25, 50),  # Обратите внимание на апостроф
-            ("Мятна чорника", 25, 50),
-            ("Вишня-лимон", 25, 40),
-            ("Енергетик", 25, 50),
-            ("Тропік", 25, 25),
-            ("Тост з чорницею", 25, 35),
-            ("Чорниця-малина", 25, 30),
-            ("Ягоди з хвоєю", 25, 50),
-            ("Лічі-маракуя", 25, 30),
-        ]
-
-        for name, price, qty in products:
-            await db.add_product(name, price, qty)
-        logger.info("✅ Все 10 товаров добавлены")
+        seeded = await db.seed_products_if_empty(default_products())
+        if seeded:
+            logger.info("✅ Дефолтные товары добавлены")
+        else:
+            logger.info("📦 Товары уже существуют")
     except Exception as e:
         logger.info(f"📦 Товары уже существуют или ошибка: {e}")
 

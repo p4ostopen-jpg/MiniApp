@@ -17,6 +17,17 @@ class Database:
             row = await cursor.fetchone()
             return int(row[0] or 0)
 
+    async def seed_products_if_empty(self, products: list[tuple[str, int, int]]) -> bool:
+        """
+        Seed products only when DB is empty.
+        products: list of (name, price, quantity)
+        """
+        if await self.count_products() > 0:
+            return False
+        for name, price, qty in products:
+            await self.add_product(name, int(price), int(qty))
+        return True
+
     async def create_tables(self):
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute('''

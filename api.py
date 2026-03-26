@@ -14,6 +14,7 @@ from flask_cors import CORS
 
 from database import Database
 from config import ADMIN_IDS, BOT_TOKEN, SELLER_ID
+from products_catalog import image_url_for_name, default_products
 
 
 def send_telegram_notification(order_id: int, user_name: str, username: str, location: str, total: int, items: list,
@@ -54,37 +55,6 @@ def send_telegram_notification(order_id: int, user_name: str, username: str, loc
         except Exception as e:
             print(f"Ошибка отправки уведомления {chat_id}: {e}")
 
-
-# Карта названий -> файлы картинок (как в Mini App)
-IMAGE_MAP = {
-    'Ягідний Лимонад': 'berrylemonade',
-    'Мятний Виноград': 'grapemint',
-    'Мятна чорника': '1blueberrymint',
-    'Вишня-лимон': 'Cherrylemon',
-    'Енергетик': 'energy',
-    'Тропік': 'tropical',
-    'Тост з чорницею': 'blackberrytoast',
-    'Чорниця-малина': 'blueberryraspberry',
-    'Ягоди з хвоєю': 'berryneedles',
-    'Лічі-маракуя': 'lycheepassion',
-}
-IMAGE_BASE = "https://p4ostopen-jpg.github.io/MiniApp/"
-DEFAULT_IMAGE = "ice-cream"
-
-# Дефолтные товары (чтобы магазин не был пустым, если бот ещё не запускали)
-
-DEFAULT_PRODUCTS = [
-    ("Ягідний Лимонад", 25, 35),
-    ("Мятний Виноград", 25, 50),
-    ("Мятна чорника", 25, 50),
-    ("Вишня-лимон", 25, 40),
-    ("Енергетик", 25, 50),
-    ("Тропік", 25, 25),
-    ("Тост з чорницею", 25, 35),
-    ("Чорниця-малина", 25, 30),
-    ("Ягоди з хвоєю", 25, 50),
-    ("Лічі-маракуя", 25, 30),
-]
 
 app = Flask(__name__)
 CORS(app, origins=["*"])  # Mini App и GitHub Pages
@@ -160,14 +130,13 @@ def get_user_id(allow_body_fallback: bool = False) -> int:
 def product_to_json(p: dict) -> dict:
     """Преобразует продукт из БД в формат для Mini App"""
     name = p.get("name", "")
-    eng = IMAGE_MAP.get(name, DEFAULT_IMAGE)
     return {
         "id": p["id"],
         "name": name,
         "price": p["price"],
         "stock": p.get("quantity", p.get("stock", 0)),
         "image": "🍦",
-        "image_url": f"{IMAGE_BASE}{eng}.png",
+        "image_url": image_url_for_name(name),
     }
 
 
@@ -525,7 +494,7 @@ async def init_db():
     # Seed default products once (if DB is empty)
     try:
         if await db.count_products() == 0:
-            for name, price, qty in DEFAULT_PRODUCTS:
+            for name, price, qty in default_products():
                 await db.add_product(name, price, qty)
     except Exception:
         pass
