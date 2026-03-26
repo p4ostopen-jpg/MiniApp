@@ -88,6 +88,46 @@
             transition: transform 0.2s, box-shadow 0.2s;
             z-index: 100;
         }
+        .lang-fab {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            width: 64px;
+            height: 64px;
+            border-radius: 32px;
+            border: none;
+            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
+            color: white;
+            font-size: 26px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3);
+            z-index: 101;
+        }
+        .lang-menu {
+            position: fixed;
+            bottom: 96px;
+            left: 24px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+            padding: 6px;
+            z-index: 102;
+            display: none;
+            min-width: 140px;
+        }
+        .lang-option {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: left;
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .lang-option:hover {
+            background: #f3f6fa;
+        }
 
         .cart-fab:hover {
             transform: scale(1.1);
@@ -945,10 +985,10 @@
     <div class="container">
         <!-- Навигация -->
         <div class="nav-menu">
-            <button class="nav-btn active" onclick="showPage('main')">🔍 Меню</button>
-            <button class="nav-btn" onclick="showPage('cart')">🛒 Кошик</button>
-            <button class="nav-btn" onclick="showPage('orders')">📋 Замовлення</button>
-            <button class="nav-btn admin-btn" onclick="showPage('admin')" id="adminNavBtn" style="display: none;">👨‍💼 Админ</button>
+            <button class="nav-btn active" onclick="showPage('main')" data-i18n="nav_menu">🔍 Меню</button>
+            <button class="nav-btn" onclick="showPage('cart')" data-i18n="nav_cart">🛒 Кошик</button>
+            <button class="nav-btn" onclick="showPage('orders')" data-i18n="nav_orders">📋 Замовлення</button>
+            <button class="nav-btn admin-btn" onclick="showPage('admin')" id="adminNavBtn" style="display: none;" data-i18n="nav_admin">👨‍💼 Админ</button>
         </div>
 
         <!-- Подсказка: открыть из Telegram -->
@@ -963,10 +1003,10 @@
                      alt="Chaser"
                      style="width: auto; height: auto; object-fit: contain; margin-bottom: 10px;">
                 <h1>Жи Ши</h1>
-                <p>Ароматизатори для под-систем</p>
+                <p data-i18n="main_subtitle">Ароматизатори для под-систем</p>
             </div>
-            <input type="text" id="searchProducts" class="search-bar" placeholder="🔍 Пошук товарів..." oninput="filterProducts()">
-            <div class="pull-refresh-hint" id="pullRefreshHint" onclick="refreshMain()" style="cursor:pointer;">↓ Натисніть для оновлення</div>
+            <input type="text" id="searchProducts" class="search-bar" placeholder="🔍 Пошук товарів..." data-i18n-placeholder="search_placeholder" oninput="filterProducts()">
+            <div class="pull-refresh-hint" id="pullRefreshHint" onclick="refreshMain()" style="cursor:pointer;" data-i18n="refresh_click">↓ Натисніть для оновлення</div>
             <div id="productsLoading" class="loading-overlay" style="display:none;">
                 <div class="loading-spinner"></div>
                 <p>Завантажую...</p>
@@ -977,7 +1017,7 @@
         <!-- Страница корзины -->
         <div id="cartPage" style="display:none;">
             <div class="header">
-                <h1>🛒 Кошик</h1>
+                <h1 data-i18n="cart_title">🛒 Кошик</h1>
             </div>
             <div id="cartItems"></div>
             <div id="cartTotal" class="cart-total">0 €</div>
@@ -991,40 +1031,40 @@
                 <div class="saved-addresses" id="savedAddresses"></div>
                 <div class="location-buttons">
                     <button class="location-btn" onclick="getLocation()" id="locationBtn">
-                        📍 Вказати місцезнаходження
+                        <span data-i18n="location_pick">📍 Вказати місцезнаходження</span>
                     </button>
                 </div>
-                <input type="text" id="location" class="location-input" placeholder="✏️ Або введіть адресу">
+                <input type="text" id="location" class="location-input" placeholder="✏️ Або введіть адресу" data-i18n-placeholder="location_placeholder">
                 <select id="deliverySlot" class="location-input">
                     <option value="">🕐 Зручний час доставки (будь-який)</option>
                     <option value="morning">Ранок (9-12)</option>
                     <option value="day">День (12-18)</option>
                     <option value="evening">Вечір (18-24)</option>
                 </select>
-                <input type="text" id="orderNotes" class="location-input" placeholder="📝 Коментарій (необов'язково)">
+                <input type="text" id="orderNotes" class="location-input" placeholder="📝 Коментарій (необов'язково)" data-i18n-placeholder="notes_placeholder">
                 <div class="promo-input-wrap">
-                    <input type="text" id="promoCode" class="location-input" placeholder="🎟 Промокод">
-                    <button class="location-btn" style="padding: 12px 20px;" onclick="applyPromo(false)">Використати</button>
+                    <input type="text" id="promoCode" class="location-input" placeholder="🎟 Промокод" data-i18n-placeholder="promo_placeholder">
+                    <button class="location-btn" style="padding: 12px 20px;" onclick="applyPromo(false)" data-i18n="promo_apply">Використати</button>
                 </div>
                 <div id="promoStatus" class="promo-applied" style="display:none;"></div>
-                <button class="checkout-btn" onclick="checkout()">✅ Оформити замовлення</button>
+                <button class="checkout-btn" onclick="checkout()" data-i18n="checkout_btn">✅ Оформити замовлення</button>
             </div>
         </div>
 
         <!-- Страница заказов -->
         <div id="ordersPage" style="display:none;">
             <div class="header">
-                <h1>📋 Мої замовлення</h1>
-                <p>Мої замовлення та їх статус</p>
+                <h1 data-i18n="orders_title">📋 Мої замовлення</h1>
+                <p data-i18n="orders_subtitle">Мої замовлення та їх статус</p>
             </div>
-            <div class="pull-refresh-hint" onclick="loadOrdersFromAPI(); showToast('Оновлено')" style="cursor:pointer;">↻ Оновити</div>
+            <div class="pull-refresh-hint" onclick="loadOrdersFromAPI(); showToast(t('updated'))" style="cursor:pointer;" data-i18n="refresh_short">↻ Оновити</div>
             <div id="orders"></div>
         </div>
 
         <!-- Страница администратора -->
         <div id="adminPage" style="display:none;">
             <div class="header">
-                <h1>👨‍💼 Панель администратора</h1>
+                <h1 data-i18n="admin_panel">👨‍💼 Панель администратора</h1>
                 <p id="adminWelcome"></p>
             </div>
 
@@ -1084,6 +1124,12 @@
         🛒
         <span id="cartCount" class="cart-count">0</span>
     </button>
+    <button class="lang-fab" id="langFab" onclick="toggleLanguageMenu()">🇺🇦</button>
+    <div class="lang-menu" id="langMenu">
+        <button class="lang-option" onclick="setLanguage('uk')">🇺🇦 Українська</button>
+        <button class="lang-option" onclick="setLanguage('ru')">🇷🇺 Русский</button>
+        <button class="lang-option" onclick="setLanguage('de')">🇩🇪 Deutsch</button>
+    </div>
 
     <!-- Toast уведомления -->
     <div id="toast" style="display:none;" class="toast"></div>
@@ -1202,6 +1248,99 @@
             first_name: _tgUser.first_name || 'Пользователь',
             is_admin: ADMIN_IDS.includes(_tgUser.id || 0)
         };
+
+        // ==================== I18N ====================
+        const I18N = {
+            uk: {
+                nav_menu: '🔍 Меню', nav_cart: '🛒 Кошик', nav_orders: '📋 Замовлення', nav_admin: '👨‍💼 Адмін',
+                main_subtitle: 'Ароматизатори для под-систем',
+                search_placeholder: '🔍 Пошук товарів...',
+                refresh_click: '↓ Натисніть для оновлення', refresh_short: '↻ Оновити', updated: 'Оновлено', welcome: 'Ласкаво просимо!',
+                cart_title: '🛒 Кошик', location_pick: '📍 Вказати місцезнаходження',
+                location_placeholder: '✏️ Або введіть адресу', notes_placeholder: "📝 Коментар (необов'язково)",
+                promo_placeholder: '🎟 Промокод', promo_apply: 'Використати', checkout_btn: '✅ Оформити замовлення',
+                orders_title: '📋 Мої замовлення', orders_subtitle: 'Мої замовлення та їх статус',
+                admin_panel: '👨‍💼 Панель адміністратора',
+                in_stock: '✅ В наявності',
+                out_of_stock: '❌ Немає в наявності',
+                empty_search: '🔍 Нічого не знайдено',
+                empty_cart: '🛒 Кошик порожній. Додайте товари з меню',
+                empty_orders: '📋 У вас поки немає замовлень',
+                add_to_cart_ok: 'додано',
+                need_address: '📍 Вкажіть адресу доставки!',
+                cart_empty_error: '🛒 Кошик порожній!',
+                order_created: '✅ Замовлення оформлено!'
+            },
+            ru: {
+                nav_menu: '🔍 Меню', nav_cart: '🛒 Корзина', nav_orders: '📋 Заказы', nav_admin: '👨‍💼 Админ',
+                main_subtitle: 'Ароматизаторы для под-систем',
+                search_placeholder: '🔍 Поиск товаров...',
+                refresh_click: '↓ Нажмите для обновления', refresh_short: '↻ Обновить', updated: 'Обновлено', welcome: 'Добро пожаловать!',
+                cart_title: '🛒 Корзина', location_pick: '📍 Указать местоположение',
+                location_placeholder: '✏️ Или введите адрес', notes_placeholder: '📝 Комментарий (необязательно)',
+                promo_placeholder: '🎟 Промокод', promo_apply: 'Применить', checkout_btn: '✅ Оформить заказ',
+                orders_title: '📋 Мои заказы', orders_subtitle: 'Мои заказы и их статус',
+                admin_panel: '👨‍💼 Панель администратора',
+                in_stock: '✅ В наличии',
+                out_of_stock: '❌ Нет в наличии',
+                empty_search: '🔍 Ничего не найдено',
+                empty_cart: '🛒 Корзина пуста. Добавьте товары из меню',
+                empty_orders: '📋 У вас пока нет заказов',
+                add_to_cart_ok: 'добавлено',
+                need_address: '📍 Укажите адрес доставки!',
+                cart_empty_error: '🛒 Корзина пуста!',
+                order_created: '✅ Заказ оформлен!'
+            },
+            de: {
+                nav_menu: '🔍 Menü', nav_cart: '🛒 Warenkorb', nav_orders: '📋 Bestellungen', nav_admin: '👨‍💼 Admin',
+                main_subtitle: 'Aromen für Pod-Systeme',
+                search_placeholder: '🔍 Produkte suchen...',
+                refresh_click: '↓ Tippen zum Aktualisieren', refresh_short: '↻ Aktualisieren', updated: 'Aktualisiert', welcome: 'Willkommen!',
+                cart_title: '🛒 Warenkorb', location_pick: '📍 Standort angeben',
+                location_placeholder: '✏️ Oder Adresse eingeben', notes_placeholder: '📝 Kommentar (optional)',
+                promo_placeholder: '🎟 Promo-Code', promo_apply: 'Anwenden', checkout_btn: '✅ Bestellung aufgeben',
+                orders_title: '📋 Meine Bestellungen', orders_subtitle: 'Meine Bestellungen und Status',
+                admin_panel: '👨‍💼 Admin-Panel',
+                in_stock: '✅ Verfügbar',
+                out_of_stock: '❌ Nicht verfügbar',
+                empty_search: '🔍 Nichts gefunden',
+                empty_cart: '🛒 Warenkorb ist leer. Fügen Sie Produkte hinzu',
+                empty_orders: '📋 Sie haben noch keine Bestellungen',
+                add_to_cart_ok: 'hinzugefügt',
+                need_address: '📍 Bitte Lieferadresse angeben!',
+                cart_empty_error: '🛒 Warenkorb ist leer!',
+                order_created: '✅ Bestellung erstellt!'
+            }
+        };
+        let currentLang = localStorage.getItem('app_lang') || 'uk';
+        function t(key) { return (I18N[currentLang] && I18N[currentLang][key]) || I18N.uk[key] || key; }
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+            const langFab = document.getElementById('langFab');
+            if (langFab) langFab.textContent = currentLang === 'uk' ? '🇺🇦' : currentLang === 'ru' ? '🇷🇺' : '🇩🇪';
+        }
+        function setLanguage(lang) {
+            currentLang = ['uk', 'ru', 'de'].includes(lang) ? lang : 'uk';
+            localStorage.setItem('app_lang', currentLang);
+            const menu = document.getElementById('langMenu');
+            if (menu) menu.style.display = 'none';
+            applyTranslations();
+            renderProducts();
+            renderCart();
+            if (document.getElementById('ordersPage').style.display === 'block') renderOrders();
+        }
+        function toggleLanguageMenu() {
+            const menu = document.getElementById('langMenu');
+            if (!menu) return;
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('langMenu');
+            const fab = document.getElementById('langFab');
+            if (!menu || !fab) return;
+            if (!menu.contains(e.target) && !fab.contains(e.target)) menu.style.display = 'none';
+        });
 
         console.log('Current user:', currentUser);
         console.log('Telegram initData:', tg.initData ? 'present' : 'empty');
@@ -1348,7 +1487,7 @@
         function renderProductsToContainer(products, container) {
             if (!container) container = document.getElementById('products');
             if (!products || products.length === 0) {
-                container.innerHTML = '<div class="empty-state">🔍 Нічого не знайдено</div>';
+                container.innerHTML = `<div class="empty-state">${t('empty_search')}</div>`;
                 return;
             }
             container.innerHTML = products.map(product => {
@@ -1362,7 +1501,7 @@
                     </div>
                     <div class="product-name">${product.name}</div>
                     <div class="product-price">${product.price} €</div>
-                    <div class="product-stock">${isAvailable ? `✅ В наявності: ${product.stock} од.` : '❌ Нет в наличии'}</div>
+                    <div class="product-stock">${isAvailable ? `${t('in_stock')}: ${product.stock}` : t('out_of_stock')}</div>
                     ${isAvailable ? `
                     <div class="product-actions">
                         <div class="qty-selector">
@@ -1372,7 +1511,7 @@
                         </div>
                         <button class="add-btn" onclick="addToCart(${product.id})">➕</button>
                     </div>` : `
-                    <button class="add-btn disabled" disabled>Нет в наличии</button>
+                    <button class="add-btn disabled" disabled>${t('out_of_stock')}</button>
                     `}
                 </div>`;
             }).join('');
@@ -1612,6 +1751,24 @@
             return false;
         }
 
+        function promptEnableLocationSettings() {
+            const opened = openLocationSettingsIfPossible();
+            if (tg && typeof tg.showConfirm === 'function') {
+                tg.showConfirm(
+                    'Геолокация отключена. Открыть настройки и включить доступ?',
+                    function(yes) {
+                        if (yes) {
+                            const ok = openLocationSettingsIfPossible();
+                            if (!ok) showLocationEnableHint();
+                        }
+                    }
+                );
+            } else if (!opened) {
+                showLocationEnableHint();
+            }
+            return opened;
+        }
+
         async function requestLocationPermission() {
             try {
                 const { latitude, longitude } = await requestDeviceLocation();
@@ -1620,7 +1777,7 @@
                 await getAddressFromCoords(latitude, longitude);
             } catch (error) {
                 console.error('Ошибка геолокации:', error);
-                const opened = openLocationSettingsIfPossible();
+                const opened = promptEnableLocationSettings();
                 showLocationEnableHint();
                 showToast(
                     opened
@@ -1659,7 +1816,7 @@
 
                 // If location services are disabled on device, try opening settings.
                 if (String(errorMessage).includes('недоступна') || String(errorMessage).includes('запрещен')) {
-                    openLocationSettingsIfPossible();
+                    promptEnableLocationSettings();
                     showLocationEnableHint();
                 }
 
@@ -1773,7 +1930,7 @@
 
             renderCart();
             saveCart();
-            showToast(`✅ ${product.name} ×${qty} добавлено`);
+            showToast(`✅ ${product.name} ×${qty} ${t('add_to_cart_ok')}`);
         }
 
         function renderCart() {
@@ -1781,7 +1938,7 @@
             renderSavedAddresses();
 
             if (cart.length === 0) {
-                container.innerHTML = '<div class="empty-state">🛒 Кошик порожній. Додайте товари з меню</div>';
+                container.innerHTML = `<div class="empty-state">${t('empty_cart')}</div>`;
                 document.getElementById('cartTotal').innerText = '0 €';
                 appliedDiscount = 0;
                 document.getElementById('promoStatus').style.display = 'none';
@@ -1863,13 +2020,13 @@
 
             if (!location) {
                 document.getElementById('location').classList.add('error');
-                showToast('📍 Укажите адрес доставки!', true);
+                showToast(t('need_address'), true);
                 setTimeout(() => document.getElementById('location').classList.remove('error'), 1000);
                 return;
             }
 
             if (cart.length === 0) {
-                showToast('🛒 Корзина пуста!', true);
+                showToast(t('cart_empty_error'), true);
                 return;
             }
 
@@ -1909,7 +2066,7 @@
                 renderCart();
                 document.getElementById('location').value = '';
 
-                showToast('✅ Замовлення оформлено!');
+                showToast(t('order_created'));
                 showPage('orders');
                 await loadOrdersFromAPI();
             } catch (e) {
@@ -1923,7 +2080,7 @@
             if (!container) return;
 
             if (orders.length === 0) {
-                container.innerHTML = '<div class="empty-state">📋 У вас поки немає замовлень<br><small>Замовлення будуть тут після оформлення </small></div>';
+                container.innerHTML = `<div class="empty-state">${t('empty_orders')}</div>`;
                 return;
             }
 
@@ -2598,7 +2755,8 @@
             await loadOrdersFromAPI();
 
             showPage('main');
-            showToast('🍦 Welcome!');
+            applyTranslations();
+            showToast('🍦 ' + t('welcome'));
 
             console.log('=== Initialization Complete ===');
             console.log('Catalog items:', catalog.length);
