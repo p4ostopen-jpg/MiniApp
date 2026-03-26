@@ -1311,6 +1311,7 @@
                 ,confirm: '✅ Підтвердити', cancel_order: '❌ Скасувати', restore: '↩️ Відновити', complete: '👍 Виконано'
                 ,order_confirmed: '✅ Замовлення', order_cancelled: '❌ Замовлення', order_restored: '🔄 Замовлення', order_done: '👍 Замовлення'
                 ,order_cancel_confirm: 'Скасувати замовлення'
+                ,date: '📅 Дата:', order_word: 'Замовлення'
             },
             ru: {
                 nav_menu: '🔍 Меню', nav_cart: '🛒 Корзина', nav_orders: '📋 Заказы', nav_admin: '👨‍💼 Админ',
@@ -1362,6 +1363,7 @@
                 ,confirm: '✅ Подтвердить', cancel_order: '❌ Отменить', restore: '↩️ Восстановить', complete: '👍 Выполнен'
                 ,order_confirmed: '✅ Заказ', order_cancelled: '❌ Заказ', order_restored: '🔄 Заказ', order_done: '👍 Заказ'
                 ,order_cancel_confirm: 'Отменить заказ'
+                ,date: '📅 Дата:', order_word: 'Заказ'
             },
             de: {
                 nav_menu: '🔍 Menü', nav_cart: '🛒 Warenkorb', nav_orders: '📋 Bestellungen', nav_admin: '👨‍💼 Admin',
@@ -1413,6 +1415,7 @@
                 ,confirm: '✅ Bestätigen', cancel_order: '❌ Stornieren', restore: '↩️ Wiederherstellen', complete: '👍 Erledigt'
                 ,order_confirmed: '✅ Bestellung', order_cancelled: '❌ Bestellung', order_restored: '🔄 Bestellung', order_done: '👍 Bestellung'
                 ,order_cancel_confirm: 'Bestellung stornieren'
+                ,date: '📅 Datum:', order_word: 'Bestellung'
             }
         };
         const PRODUCT_NAME_I18N = {
@@ -1430,6 +1433,11 @@
         function tn(name) { return (PRODUCT_NAME_I18N[name] && PRODUCT_NAME_I18N[name][currentLang]) || name; }
         function ts(status) {
             return t(`status_${status}`) || status;
+        }
+        function localeForLang() {
+            if (currentLang === 'uk') return 'uk-UA';
+            if (currentLang === 'de') return 'de-DE';
+            return 'ru-RU';
         }
         let currentLang = localStorage.getItem('app_lang') || 'uk';
         function t(key) { return (I18N[currentLang] && I18N[currentLang][key]) || I18N.uk[key] || key; }
@@ -2217,18 +2225,18 @@
                 return `
                     <div class="order-card">
                         <div class="order-header">
-                            <span class="order-id">Замовлення #${order.id}</span>
+                            <span class="order-id">${t('order_word')} #${order.id}</span>
                             <span class="order-status ${statusClass}">${ts(order.status)}</span>
                         </div>
 
                         <div class="order-info">
                             <div class="order-info-item">
-                                <span>📍 Адреса:</span>
+                                <span>${t('address')}</span>
                                 <span>${order.location}</span>
                             </div>
                             <div class="order-info-item">
-                                <span>📅 Дата:</span>
-                                <span>${new Date(order.created_at).toLocaleString('ru-RU', {
+                                <span>${t('date')}</span>
+                                <span>${new Date(order.created_at).toLocaleString(localeForLang(), {
                                     day: 'numeric',
                                     month: 'long',
                                     hour: '2-digit',
@@ -2546,7 +2554,7 @@
                 return `
                     <div class="order-card">
                         <div class="order-header">
-                            <span class="order-id">#${order.id}</span>
+                            <span class="order-id">${t('order_word')} #${order.id}</span>
                             <span class="order-status ${statusClass}">${ts(order.status)}</span>
                         </div>
 
@@ -2570,8 +2578,8 @@
                                 <span>${order.location}</span>
                             </div>
                             <div class="order-info-item">
-                                <span>📅 Дата:</span>
-                                <span>${new Date(order.created_at).toLocaleString('ru-RU')}</span>
+                                <span>${t('date')}</span>
+                                <span>${new Date(order.created_at).toLocaleString(localeForLang(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                         </div>
 
