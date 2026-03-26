@@ -115,12 +115,12 @@
             z-index: 102;
             display: none;
 
-            width: auto; /* ширина по содержимому */
-            max-width: 90vw; /* не вылезет за экран */
+            width: auto;
+            max-width: 90vw;
         }
 
         .lang-option {
-            width: auto; /* не растягиваем на 100% */
+            width: auto;
             display: block;
             border: none;
             background: transparent;
@@ -130,9 +130,9 @@
             cursor: pointer;
             font-weight: 600;
 
-            color: black; /* 👈 чёрный текст */
-            white-space: nowrap; /* текст в одну строку */
-            font-size: clamp(12px, 3vw, 16px); /* адаптивный размер */
+            color: black;
+            white-space: nowrap;
+            font-size: clamp(12px, 3vw, 16px);
         }
 
         .lang-option:hover {
@@ -1003,7 +1003,7 @@
 
         <!-- Подсказка: открыть из Telegram -->
         <div id="openFromTelegramHint" class="location-permission" style="display:none; margin-bottom:16px;">
-            <span>⚠️ Откройте приложение из Telegram (кнопка бота), чтобы сохранялись ваши заказы и ID</span>
+            <span data-i18n="open_from_tg">⚠️ Откройте приложение из Telegram (кнопка бота), чтобы сохранялись ваши заказы и ID</span>
         </div>
 
         <!-- Главная страница с товарами -->
@@ -1019,7 +1019,7 @@
             <div class="pull-refresh-hint" id="pullRefreshHint" onclick="refreshMain()" style="cursor:pointer;" data-i18n="refresh_click">↓ Натисніть для оновлення</div>
             <div id="productsLoading" class="loading-overlay" style="display:none;">
                 <div class="loading-spinner"></div>
-                <p>Завантажую...</p>
+                <p data-i18n="loading">Завантажую...</p>
             </div>
             <div id="products" class="products-grid"></div>
         </div>
@@ -1034,9 +1034,9 @@
 
             <div class="location-section">
                 <div id="locationPermission" class="location-permission" style="display: none;">
-                    <span>📍 Для автоматического определения адреса разрешите доступ к геолокации</span>
-                    <button onclick="requestLocationPermission()">Дозволити</button>
-                    <button onclick="openLocationSettingsIfPossible(); showLocationEnableHint();" style="background:#ff9800;">Налаштування</button>
+                    <span data-i18n="geo_permission_hint">📍 Для автоматического определения адреса разрешите доступ к геолокации</span>
+                    <button onclick="requestLocationPermission()" data-i18n="allow">Дозволити</button>
+                    <button onclick="openLocationSettingsIfPossible(); showLocationEnableHint();" style="background:#ff9800;" data-i18n="settings">Налаштування</button>
                 </div>
                 <div class="saved-addresses" id="savedAddresses"></div>
                 <div class="location-buttons">
@@ -1046,10 +1046,10 @@
                 </div>
                 <input type="text" id="location" class="location-input" placeholder="✏️ Або введіть адресу" data-i18n-placeholder="location_placeholder">
                 <select id="deliverySlot" class="location-input">
-                    <option value="">🕐 Зручний час доставки (будь-який)</option>
-                    <option value="morning">Ранок (9-12)</option>
-                    <option value="day">День (12-18)</option>
-                    <option value="evening">Вечір (18-24)</option>
+                    <option value="" data-i18n="slot_any">🕐 Зручний час доставки (будь-який)</option>
+                    <option value="morning" data-i18n="slot_morning">Ранок (9-12)</option>
+                    <option value="day" data-i18n="slot_day">День (12-18)</option>
+                    <option value="evening" data-i18n="slot_evening">Вечір (18-24)</option>
                 </select>
                 <input type="text" id="orderNotes" class="location-input" placeholder="📝 Коментарій (необов'язково)" data-i18n-placeholder="notes_placeholder">
                 <div class="promo-input-wrap">
@@ -1081,40 +1081,40 @@
             <div class="admin-stats">
                 <div class="stat-card">
                     <div class="stat-value" id="pendingOrdersCount">0</div>
-                    <div class="stat-label">Новых заказов</div>
+                    <div class="stat-label" data-i18n="stat_new_orders">Новых заказов</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="totalProductsCount">0</div>
-                    <div class="stat-label">Товаров</div>
+                    <div class="stat-label" data-i18n="stat_products">Товаров</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="todayOrdersCount">0</div>
-                    <div class="stat-label">Заказов сегодня</div>
+                    <div class="stat-label" data-i18n="stat_today_orders">Заказов сегодня</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="totalRevenue">0</div>
-                    <div class="stat-label">Выручка</div>
+                    <div class="stat-label" data-i18n="stat_revenue">Выручка</div>
                 </div>
             </div>
 
             <div id="adminLowStock" class="alert-low-stock" style="display:none;"></div>
             <div class="admin-actions">
-                <button class="admin-action-btn add" onclick="showAddProductModal()">➕ Добавить новый товар</button>
-                <button class="admin-action-btn orders" onclick="showAllOrders()">📋 Все заказы (история)</button>
-                <button class="admin-action-btn update" onclick="showUpdateStockModal()">📦 Обновить остатки</button>
-                <button class="admin-action-btn delete" onclick="showDeleteProductModal()">❌ Удалить товар</button>
-                <button class="admin-action-btn orders" onclick="showCustomersList()">👥 Покупатели</button>
-                <button class="admin-action-btn orders" onclick="toggleChatsSection()">💬 Чаты <span id="chatBadge" style="display:none;background:#ff6b6b;color:white;border-radius:10px;padding:2px 8px;margin-left:6px;font-size:12px;">0</span></button>
-                <button class="admin-action-btn update" onclick="exportOrders()">📥 Экспорт заказов (CSV)</button>
+                <button class="admin-action-btn add" onclick="showAddProductModal()" data-i18n="admin_add_product">➕ Добавить новый товар</button>
+                <button class="admin-action-btn orders" onclick="showAllOrders()" data-i18n="admin_all_orders">📋 Все заказы (история)</button>
+                <button class="admin-action-btn update" onclick="showUpdateStockModal()" data-i18n="admin_update_stock">📦 Обновить остатки</button>
+                <button class="admin-action-btn delete" onclick="showDeleteProductModal()" data-i18n="admin_delete_product">❌ Удалить товар</button>
+                <button class="admin-action-btn orders" onclick="showCustomersList()" data-i18n="admin_customers">👥 Покупатели</button>
+                <button class="admin-action-btn orders" onclick="toggleChatsSection()" id="adminChatsBtn">💬 Чаты <span id="chatBadge" style="display:none;background:#ff6b6b;color:white;border-radius:10px;padding:2px 8px;margin-left:6px;font-size:12px;">0</span></button>
+                <button class="admin-action-btn update" onclick="exportOrders()" data-i18n="admin_export">📥 Экспорт заказов (CSV)</button>
             </div>
             <div id="adminCustomersSection" style="display:none;" class="product-list"></div>
             <div id="adminChatsSection" style="display:none;" class="product-list"></div>
 
             <div id="adminOrdersSection" style="display: none;">
                 <div class="admin-header">
-                    <h2>📋 Управление заказами</h2>
+                    <h2 data-i18n="admin_orders_manage">📋 Управление заказами</h2>
                     <button onclick="hideAllOrders()" style="background: none; border: none; color: #4a6fa5; cursor: pointer;">
-                        ✕ Закрыть
+                        <span data-i18n="close">✕ Закрыть</span>
                     </button>
                 </div>
                 <div id="adminOrdersList"></div>
@@ -1122,7 +1122,7 @@
 
             <div id="adminProductsSection">
                 <div class="admin-header">
-                    <h2>📦 Управление товарами</h2>
+                    <h2 data-i18n="admin_products_manage">📦 Управление товарами</h2>
                 </div>
                 <div id="adminProductsList" class="product-list"></div>
             </div>
@@ -1147,11 +1147,11 @@
     <!-- Модальное окно для добавления/редактирования товара -->
     <div id="addProductModal" style="display:none;" class="modal">
         <div class="modal-content">
-            <div class="modal-title" id="addProductModalTitle">➕ Добавить новый товар</div>
+            <div class="modal-title" id="addProductModalTitle" data-i18n="modal_add_product_title">➕ Добавить новый товар</div>
             <input type="hidden" id="editProductId" value="">
-            <input type="text" id="newProductName" class="modal-input" placeholder="Название товара">
-            <input type="number" id="newProductPrice" class="modal-input" placeholder="Цена">
-            <input type="number" id="newProductStock" class="modal-input" placeholder="Количество">
+            <input type="text" id="newProductName" class="modal-input" placeholder="Название товара" data-i18n-placeholder="product_name">
+            <input type="number" id="newProductPrice" class="modal-input" placeholder="Цена" data-i18n-placeholder="price">
+            <input type="number" id="newProductStock" class="modal-input" placeholder="Количество" data-i18n-placeholder="quantity">
             <select id="newProductImage" class="modal-input">
                 <option value="🍦">🍦 Обычное</option>
                 <option value="🍫">🍫 Шоколадное</option>
@@ -1162,8 +1162,8 @@
                 <option value="🍪">🍪 Печенье</option>
             </select>
             <div class="modal-buttons">
-                <button class="modal-btn save" onclick="addProduct()">Добавить</button>
-                <button class="modal-btn cancel" onclick="hideModal('addProductModal')">Отмена</button>
+                <button class="modal-btn save" onclick="addProduct()" data-i18n="add">Добавить</button>
+                <button class="modal-btn cancel" onclick="hideModal('addProductModal')" data-i18n="cancel">Отмена</button>
             </div>
         </div>
     </div>
@@ -1171,12 +1171,12 @@
     <!-- Модальное окно для обновления остатков -->
     <div id="updateStockModal" style="display:none;" class="modal">
         <div class="modal-content">
-            <div class="modal-title">📦 Обновить остатки</div>
+            <div class="modal-title" data-i18n="modal_update_stock">📦 Обновить остатки</div>
             <select id="updateProductSelect" class="modal-input"></select>
-            <input type="number" id="updateProductStock" class="modal-input" placeholder="Новое количество">
+            <input type="number" id="updateProductStock" class="modal-input" placeholder="Новое количество" data-i18n-placeholder="new_quantity">
             <div class="modal-buttons">
-                <button class="modal-btn save" onclick="updateProductStock()">Обновить</button>
-                <button class="modal-btn cancel" onclick="hideModal('updateStockModal')">Отмена</button>
+                <button class="modal-btn save" onclick="updateProductStock()" data-i18n="update">Обновить</button>
+                <button class="modal-btn cancel" onclick="hideModal('updateStockModal')" data-i18n="cancel">Отмена</button>
             </div>
         </div>
     </div>
@@ -1184,11 +1184,11 @@
     <!-- Модальное окно для удаления товара -->
     <div id="deleteProductModal" style="display:none;" class="modal">
         <div class="modal-content">
-            <div class="modal-title">❌ Удалить товар</div>
+            <div class="modal-title" data-i18n="modal_delete_product">❌ Удалить товар</div>
             <select id="deleteProductSelect" class="modal-input"></select>
             <div class="modal-buttons">
-                <button class="modal-btn save" style="background: #ff6b6b;" onclick="deleteProduct()">Удалить</button>
-                <button class="modal-btn cancel" onclick="hideModal('deleteProductModal')">Отмена</button>
+                <button class="modal-btn save" style="background: #ff6b6b;" onclick="deleteProduct()" data-i18n="delete">Удалить</button>
+                <button class="modal-btn cancel" onclick="hideModal('deleteProductModal')" data-i18n="cancel">Отмена</button>
             </div>
         </div>
     </div>
@@ -1196,10 +1196,10 @@
     <!-- Модальное окно подтверждения -->
     <div id="confirmModal" style="display:none;" class="modal">
         <div class="confirm-dialog">
-            <p id="confirmMessage">Вы уверены?</p>
+            <p id="confirmMessage" data-i18n="are_you_sure">Вы уверены?</p>
             <div class="modal-buttons">
-                <button class="modal-btn save" id="confirmYesBtn">Да</button>
-                <button class="modal-btn cancel" onclick="hideModal('confirmModal')">Отмена</button>
+                <button class="modal-btn save" id="confirmYesBtn" data-i18n="yes">Да</button>
+                <button class="modal-btn cancel" onclick="hideModal('confirmModal')" data-i18n="cancel">Отмена</button>
             </div>
         </div>
     </div>
@@ -1274,12 +1274,43 @@
                 in_stock: '✅ В наявності',
                 out_of_stock: '❌ Немає в наявності',
                 empty_search: '🔍 Нічого не знайдено',
+                empty_products: '📦 Товарів поки немає. Додайте їх через адмін-панель.',
                 empty_cart: '🛒 Кошик порожній. Додайте товари з меню',
                 empty_orders: '📋 У вас поки немає замовлень',
                 add_to_cart_ok: 'додано',
                 need_address: '📍 Вкажіть адресу доставки!',
                 cart_empty_error: '🛒 Кошик порожній!',
-                order_created: '✅ Замовлення оформлено!'
+                order_created: '✅ Замовлення оформлено!',
+                err_load_orders: '❌ Не вдалося завантажити замовлення',
+                err_create_order: '❌ Помилка створення замовлення. Перевірте API.',
+                to_cart_added: '✅ Товари додані до кошика',
+                err_generic_load: 'Помилка завантаження',
+                chats_empty: '💬 Чатів поки немає',
+                chat_opened: '💬 Чат відкрито. Очікуємо відповідь клієнта.',
+                err_send: '❌ Помилка відправки',
+                chat_closed: '✅ Чат закрито',
+                err_update: '❌ Помилка оновлення', err_delete: '❌ Помилка видалення',
+                ask_geo: '📍 Запитуємо доступ до геолокації...', address_received: '✅ Адресу отримано',
+                open_from_tg: '⚠️ Відкрийте застосунок із Telegram (кнопка бота), щоб зберігались ваші замовлення та ID',
+                admin_welcome: '👋 Ласкаво просимо,',
+                loading: 'Завантажую...',
+                geo_permission_hint: '📍 Для автоматичного визначення адреси дозвольте доступ до геолокації',
+                allow: 'Дозволити', settings: 'Налаштування',
+                slot_any: '🕐 Зручний час доставки (будь-який)', slot_morning: 'Ранок (9-12)', slot_day: 'День (12-18)', slot_evening: 'Вечір (18-24)',
+                stat_new_orders: 'Нових замовлень', stat_products: 'Товарів', stat_today_orders: 'Замовлень сьогодні', stat_revenue: 'Виручка',
+                admin_add_product: '➕ Додати новий товар', admin_all_orders: '📋 Всі замовлення (історія)', admin_update_stock: '📦 Оновити залишки',
+                admin_delete_product: '❌ Видалити товар', admin_customers: '👥 Покупці', admin_chats: '💬 Чати', admin_export: '📥 Експорт замовлень (CSV)',
+                admin_orders_manage: '📋 Керування замовленнями', admin_products_manage: '📦 Керування товарами',
+                close: '✕ Закрити', modal_add_product_title: '➕ Додати новий товар', product_name: 'Назва товару', price: 'Ціна',
+                quantity: 'Кількість', add: 'Додати', cancel: 'Скасувати', modal_update_stock: '📦 Оновити залишки',
+                new_quantity: 'Нова кількість', update: 'Оновити', modal_delete_product: '❌ Видалити товар', delete: 'Видалити',
+                are_you_sure: 'Ви впевнені?', yes: 'Так'
+                ,status_pending: '⏳ Очікує підтвердження', status_confirmed: '✅ Підтверджено', status_completed: '👍 Виконано', status_cancelled: '❌ Скасовано'
+                ,reorder: '🔄 Повторити замовлення', low_stock: '⚠️ Мало на складі:'
+                ,client: '👤 Клієнт:', address: '📍 Адреса:', total: 'Разом:', write_client: 'Написати клієнту'
+                ,confirm: '✅ Підтвердити', cancel_order: '❌ Скасувати', restore: '↩️ Відновити', complete: '👍 Виконано'
+                ,order_confirmed: '✅ Замовлення', order_cancelled: '❌ Замовлення', order_restored: '🔄 Замовлення', order_done: '👍 Замовлення'
+                ,order_cancel_confirm: 'Скасувати замовлення'
             },
             ru: {
                 nav_menu: '🔍 Меню', nav_cart: '🛒 Корзина', nav_orders: '📋 Заказы', nav_admin: '👨‍💼 Админ',
@@ -1294,12 +1325,43 @@
                 in_stock: '✅ В наличии',
                 out_of_stock: '❌ Нет в наличии',
                 empty_search: '🔍 Ничего не найдено',
+                empty_products: '📦 Товаров пока нет. Добавьте их через админ-панель.',
                 empty_cart: '🛒 Корзина пуста. Добавьте товары из меню',
                 empty_orders: '📋 У вас пока нет заказов',
                 add_to_cart_ok: 'добавлено',
                 need_address: '📍 Укажите адрес доставки!',
                 cart_empty_error: '🛒 Корзина пуста!',
-                order_created: '✅ Заказ оформлен!'
+                order_created: '✅ Заказ оформлен!',
+                err_load_orders: '❌ Не удалось загрузить заказы',
+                err_create_order: '❌ Ошибка создания заказа. Проверь API.',
+                to_cart_added: '✅ Товары добавлены в корзину',
+                err_generic_load: 'Ошибка загрузки',
+                chats_empty: '💬 Чатов пока нет',
+                chat_opened: '💬 Чат открыт. Ожидаем ответ клиента.',
+                err_send: '❌ Ошибка отправки',
+                chat_closed: '✅ Чат закрыт',
+                err_update: '❌ Ошибка обновления', err_delete: '❌ Ошибка удаления',
+                ask_geo: '📍 Запрашиваем доступ к геолокации...', address_received: '✅ Адрес получен',
+                open_from_tg: '⚠️ Откройте приложение из Telegram (кнопка бота), чтобы сохранялись ваши заказы и ID',
+                admin_welcome: '👋 Добро пожаловать,',
+                loading: 'Загрузка...',
+                geo_permission_hint: '📍 Для автоматического определения адреса разрешите доступ к геолокации',
+                allow: 'Разрешить', settings: 'Настройки',
+                slot_any: '🕐 Удобное время доставки (любое)', slot_morning: 'Утро (9-12)', slot_day: 'День (12-18)', slot_evening: 'Вечер (18-24)',
+                stat_new_orders: 'Новых заказов', stat_products: 'Товаров', stat_today_orders: 'Заказов сегодня', stat_revenue: 'Выручка',
+                admin_add_product: '➕ Добавить новый товар', admin_all_orders: '📋 Все заказы (история)', admin_update_stock: '📦 Обновить остатки',
+                admin_delete_product: '❌ Удалить товар', admin_customers: '👥 Покупатели', admin_chats: '💬 Чаты', admin_export: '📥 Экспорт заказов (CSV)',
+                admin_orders_manage: '📋 Управление заказами', admin_products_manage: '📦 Управление товарами',
+                close: '✕ Закрыть', modal_add_product_title: '➕ Добавить новый товар', product_name: 'Название товара', price: 'Цена',
+                quantity: 'Количество', add: 'Добавить', cancel: 'Отмена', modal_update_stock: '📦 Обновить остатки',
+                new_quantity: 'Новое количество', update: 'Обновить', modal_delete_product: '❌ Удалить товар', delete: 'Удалить',
+                are_you_sure: 'Вы уверены?', yes: 'Да'
+                ,status_pending: '⏳ Ждет подтверждения', status_confirmed: '✅ Подтверждено', status_completed: '👍 Выполнен', status_cancelled: '❌ Отменён'
+                ,reorder: '🔄 Повторить заказ', low_stock: '⚠️ Мало на складе:'
+                ,client: '👤 Клиент:', address: '📍 Адрес:', total: 'Итого:', write_client: 'Написать клиенту'
+                ,confirm: '✅ Подтвердить', cancel_order: '❌ Отменить', restore: '↩️ Восстановить', complete: '👍 Выполнен'
+                ,order_confirmed: '✅ Заказ', order_cancelled: '❌ Заказ', order_restored: '🔄 Заказ', order_done: '👍 Заказ'
+                ,order_cancel_confirm: 'Отменить заказ'
             },
             de: {
                 nav_menu: '🔍 Menü', nav_cart: '🛒 Warenkorb', nav_orders: '📋 Bestellungen', nav_admin: '👨‍💼 Admin',
@@ -1314,21 +1376,76 @@
                 in_stock: '✅ Verfügbar',
                 out_of_stock: '❌ Nicht verfügbar',
                 empty_search: '🔍 Nichts gefunden',
+                empty_products: '📦 Noch keine Produkte. Fügen Sie sie über das Admin-Panel hinzu.',
                 empty_cart: '🛒 Warenkorb ist leer. Fügen Sie Produkte hinzu',
                 empty_orders: '📋 Sie haben noch keine Bestellungen',
                 add_to_cart_ok: 'hinzugefügt',
                 need_address: '📍 Bitte Lieferadresse angeben!',
                 cart_empty_error: '🛒 Warenkorb ist leer!',
-                order_created: '✅ Bestellung erstellt!'
+                order_created: '✅ Bestellung erstellt!',
+                err_load_orders: '❌ Bestellungen konnten nicht geladen werden',
+                err_create_order: '❌ Fehler beim Erstellen der Bestellung. API prüfen.',
+                to_cart_added: '✅ Produkte zum Warenkorb hinzugefügt',
+                err_generic_load: 'Ladefehler',
+                chats_empty: '💬 Noch keine Chats',
+                chat_opened: '💬 Chat geöffnet. Antwort des Kunden wird erwartet.',
+                err_send: '❌ Senden fehlgeschlagen',
+                chat_closed: '✅ Chat geschlossen',
+                err_update: '❌ Aktualisierungsfehler', err_delete: '❌ Löschfehler',
+                ask_geo: '📍 Standortzugriff wird angefordert...', address_received: '✅ Adresse erhalten',
+                open_from_tg: '⚠️ Öffnen Sie die App aus Telegram (Bot-Schaltfläche), damit Bestellungen und ID gespeichert werden',
+                admin_welcome: '👋 Willkommen,',
+                loading: 'Laden...',
+                geo_permission_hint: '📍 Für automatische Adressermittlung bitte Standortzugriff erlauben',
+                allow: 'Erlauben', settings: 'Einstellungen',
+                slot_any: '🕐 Bevorzugte Lieferzeit (beliebig)', slot_morning: 'Morgen (9-12)', slot_day: 'Tag (12-18)', slot_evening: 'Abend (18-24)',
+                stat_new_orders: 'Neue Bestellungen', stat_products: 'Produkte', stat_today_orders: 'Bestellungen heute', stat_revenue: 'Umsatz',
+                admin_add_product: '➕ Neues Produkt hinzufügen', admin_all_orders: '📋 Alle Bestellungen (Verlauf)', admin_update_stock: '📦 Bestand aktualisieren',
+                admin_delete_product: '❌ Produkt löschen', admin_customers: '👥 Kunden', admin_chats: '💬 Chats', admin_export: '📥 Bestellungen exportieren (CSV)',
+                admin_orders_manage: '📋 Bestellungen verwalten', admin_products_manage: '📦 Produkte verwalten',
+                close: '✕ Schließen', modal_add_product_title: '➕ Neues Produkt hinzufügen', product_name: 'Produktname', price: 'Preis',
+                quantity: 'Menge', add: 'Hinzufügen', cancel: 'Abbrechen', modal_update_stock: '📦 Bestand aktualisieren',
+                new_quantity: 'Neue Menge', update: 'Aktualisieren', modal_delete_product: '❌ Produkt löschen', delete: 'Löschen',
+                are_you_sure: 'Sind Sie sicher?', yes: 'Ja'
+                ,status_pending: '⏳ Wartet auf Bestätigung', status_confirmed: '✅ Bestätigt', status_completed: '👍 Erledigt', status_cancelled: '❌ Storniert'
+                ,reorder: '🔄 Erneut bestellen', low_stock: '⚠️ Niedriger Lagerbestand:'
+                ,client: '👤 Kunde:', address: '📍 Adresse:', total: 'Summe:', write_client: 'Kunden schreiben'
+                ,confirm: '✅ Bestätigen', cancel_order: '❌ Stornieren', restore: '↩️ Wiederherstellen', complete: '👍 Erledigt'
+                ,order_confirmed: '✅ Bestellung', order_cancelled: '❌ Bestellung', order_restored: '🔄 Bestellung', order_done: '👍 Bestellung'
+                ,order_cancel_confirm: 'Bestellung stornieren'
             }
         };
+        const PRODUCT_NAME_I18N = {
+            'Ягідний Лимонад': { uk: 'Ягідний Лимонад', ru: 'Ягодный Лимонад', de: 'Beerenlimonade' },
+            'Мятний Виноград': { uk: 'Мятний Виноград', ru: 'Мятный Виноград', de: 'Minztraube' },
+            'Мятна чорника': { uk: 'Мятна чорника', ru: 'Мятная Черника', de: 'Minz-Blaubeere' },
+            'Вишня-лимон': { uk: 'Вишня-лимон', ru: 'Вишня-лимон', de: 'Kirsche-Zitrone' },
+            'Енергетик': { uk: 'Енергетик', ru: 'Энергетик', de: 'Energy' },
+            'Тропік': { uk: 'Тропік', ru: 'Тропик', de: 'Tropik' },
+            'Тост з чорницею': { uk: 'Тост з чорницею', ru: 'Тост с Черникой', de: 'Toast mit Blaubeere' },
+            'Чорниця-малина': { uk: 'Чорниця-малина', ru: 'Черника-малина', de: 'Blaubeere-Himbeere' },
+            'Ягоди з хвоєю': { uk: 'Ягоди з хвоєю', ru: 'Ягоды с Хвоей', de: 'Beeren mit Nadelaroma' },
+            'Лічі-маракуя': { uk: 'Лічі-маракуя', ru: 'Личи-маракуйя', de: 'Litschi-Maracuja' }
+        };
+        function tn(name) { return (PRODUCT_NAME_I18N[name] && PRODUCT_NAME_I18N[name][currentLang]) || name; }
+        function ts(status) {
+            return t(`status_${status}`) || status;
+        }
         let currentLang = localStorage.getItem('app_lang') || 'uk';
         function t(key) { return (I18N[currentLang] && I18N[currentLang][key]) || I18N.uk[key] || key; }
         function applyTranslations() {
             document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+            const chatsBtn = document.getElementById('adminChatsBtn');
+            if (chatsBtn && chatsBtn.childNodes.length > 0) {
+                chatsBtn.childNodes[0].nodeValue = t('admin_chats') + ' ';
+            }
             const langFab = document.getElementById('langFab');
             if (langFab) langFab.textContent = currentLang === 'uk' ? '🇺🇦' : currentLang === 'ru' ? '🇷🇺' : '🇩🇪';
+            if (currentUser?.is_admin) {
+                const w = document.getElementById('adminWelcome');
+                if (w) w.innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
+            }
         }
         function setLanguage(lang) {
             currentLang = ['uk', 'ru', 'de'].includes(lang) ? lang : 'uk';
@@ -1457,7 +1574,7 @@
                 
                 if (catalog.length === 0) {
                     console.warn('[loadCatalog] Catalog is empty!');
-                    grid.innerHTML = '<div class="empty-state">📦 Товаров пока нет. Добавьте их через админ-панель.</div>';
+                    grid.innerHTML = `<div class="empty-state">${t('empty_products')}</div>`;
                 } else {
                     renderProducts();
                 }
@@ -1509,7 +1626,7 @@
                     <div class="product-image">
                         <img src="${product.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" onerror="this.style.display='none';this.parentElement.innerHTML='${product.image || '🍦'}';">
                     </div>
-                    <div class="product-name">${product.name}</div>
+                    <div class="product-name">${tn(product.name)}</div>
                     <div class="product-price">${product.price} €</div>
                     <div class="product-stock">${isAvailable ? `${t('in_stock')}: ${product.stock}` : t('out_of_stock')}</div>
                     ${isAvailable ? `
@@ -1547,7 +1664,7 @@
             const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
             if (cart.length === 0) {
-                if (!silent) showToast('🛒 Кошик порожній', true);
+                if (!silent) showToast(t('cart_empty_error'), true);
                 return;
             }
 
@@ -1589,7 +1706,7 @@
                 console.error('Ошибка загрузки заказов:', e);
                 orders = [];
                 renderOrders();
-                showToast('❌ Не удалось загрузить заказы', true);
+                showToast(t('err_load_orders'), true);
                 return false;
             }
         }
@@ -1603,7 +1720,7 @@
                 return true;
             } catch (e) {
                 console.error('Ошибка загрузки заказов:', e);
-                showToast('❌ Не удалось загрузить заказы админа', true);
+                showToast(t('err_load_orders'), true);
                 return false;
             }
         }
@@ -1656,7 +1773,7 @@
         if (currentUser.is_admin) {
             console.log('✅ Админ авторизован, показываем панель');
             document.getElementById('adminNavBtn').style.display = 'block';
-            document.getElementById('adminWelcome').innerHTML = `👋 Добро пожаловать, ${currentUser.first_name}!`;
+            document.getElementById('adminWelcome').innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
         } else {
             console.log('❌ Не админ, панель скрыта');
         }
@@ -1800,7 +1917,7 @@
         }
 
         async function getLocation() {
-            showToast('📍 Запрашиваем доступ к геолокации...');
+            showToast(t('ask_geo'));
             try {
                 const { latitude, longitude } = await requestDeviceLocation();
                 document.getElementById('locationPermission').style.display = 'none';
@@ -1858,7 +1975,7 @@
 
                 if (data.display_name) {
                     document.getElementById('location').value = data.display_name;
-                    showToast('✅ Адрес получен');
+                    showToast(t('address_received'));
                 } else {
                     document.getElementById('location').value = `${lat}, ${lon}`;
                     showToast('📍 Координаты получены');
@@ -1899,7 +2016,7 @@
                     }
                 }, 10000);
             }
-            showToast('✅ Оновлено');
+            showToast(t('updated'));
         }
 
         function increaseQty(id) {
@@ -1961,7 +2078,7 @@
                 return `
                     <div class="cart-item">
                         <div class="cart-item-info">
-                            <h4>${item.name}</h4>
+                            <h4>${tn(item.name)}</h4>
                             <div class="cart-item-price">${item.price} €</div>
                         </div>
                         <div class="cart-item-controls">
@@ -2081,7 +2198,7 @@
                 await loadOrdersFromAPI();
             } catch (e) {
                 console.error('Ошибка создания заказа:', e);
-                showToast('❌ Ошибка создания заказа. Проверь API.', true);
+                showToast(t('err_create_order'), true);
             }
         }
 
@@ -2101,7 +2218,7 @@
                     <div class="order-card">
                         <div class="order-header">
                             <span class="order-id">Замовлення #${order.id}</span>
-                            <span class="order-status ${statusClass}">${order.status_text}</span>
+                            <span class="order-status ${statusClass}">${ts(order.status)}</span>
                         </div>
 
                         <div class="order-info">
@@ -2123,7 +2240,7 @@
                         <div class="order-items">
                             ${order.items.map(item => `
                                 <div class="order-item">
-                                    <span class="order-item-name">${item.name}</span>
+                                    <span class="order-item-name">${tn(item.name)}</span>
                                     <div class="order-item-details">
                                         <span>${item.quantity} × ${item.price} €</span>
                                         <span class="order-item-price">${item.total} €</span>
@@ -2133,9 +2250,9 @@
                         </div>
 
                         <div class="order-total">
-                            Итого: ${order.total} €
+                            ${order.total} €
                         </div>
-                        ${order.status !== 'cancelled' ? `<button class="reorder-btn" onclick="reorder(${order.id})">🔄 Повторити замовлення</button>` : ''}
+                        ${order.status !== 'cancelled' ? `<button class="reorder-btn" onclick="reorder(${order.id})">${t('reorder')}</button>` : ''}
                     </div>
                 `;
             }).join('');
@@ -2156,7 +2273,7 @@
             saveCart();
             renderCart();
             showPage('cart');
-            showToast('✅ Товари додані до кошику');
+            showToast(t('to_cart_added'));
         }
 
         // ==================== АДМИН ПАНЕЛЬ ====================
@@ -2183,7 +2300,7 @@
                 renderChatsSection();
             }
 
-            showToast('👨‍💼 Панель администратора загружена');
+            showToast('👨‍💼 ' + t('updated'));
         }
 
         async function loadAdminAnalytics() {
@@ -2192,7 +2309,7 @@
                 const lowEl = document.getElementById('adminLowStock');
                 if (a.low_stock && a.low_stock.length > 0) {
                     lowEl.style.display = 'block';
-                    lowEl.innerHTML = '⚠️ Мало на складе: ' + a.low_stock.map(p => `${p.name} (${p.quantity})`).join(', ');
+                    lowEl.innerHTML = `${t('low_stock')} ` + a.low_stock.map(p => `${tn(p.name)} (${p.quantity})`).join(', ');
                 } else {
                     lowEl.style.display = 'none';
                 }
@@ -2219,7 +2336,7 @@
                     </div>`
                 ).join('') || '<div class="empty-state">Нет покупателей</div>';
             } catch (e) {
-                showToast('Ошибка загрузки', true);
+                showToast(t('err_generic_load'), true);
             }
         }
 
@@ -2254,7 +2371,7 @@
             await loadAdminChats();
             const section = document.getElementById('adminChatsSection');
             if (!adminChats.length) {
-                section.innerHTML = '<div class="empty-state">💬 Чатов пока нет</div>';
+                section.innerHTML = `<div class="empty-state">${t('chats_empty')}</div>`;
                 return;
             }
             section.innerHTML = adminChats.map(t => `
@@ -2274,7 +2391,7 @@
         async function startChatWithUser(userId, firstName) {
             try {
                 const r = await apiRequest('POST', '/api/admin/chats/open', { user_id: userId });
-                showToast('💬 Чат открыт. Ожидаем ответ клиента.');
+                showToast(t('chat_opened'));
                 await openChatThread(r.thread_id, userId);
             } catch (e) {
                 showToast('❌ Не удалось открыть чат', true);
@@ -2355,14 +2472,14 @@
                 el.value = '';
                 await openChatThread(activeThreadId, userId);
             } catch (e) {
-                showToast('❌ Ошибка отправки', true);
+                showToast(t('err_send'), true);
             }
         }
 
         async function closeChatThread(threadId) {
             try {
                 await apiRequest('PUT', `/api/admin/chats/${threadId}/close`, {});
-                showToast('✅ Чат закрыт');
+                showToast(t('chat_closed'));
                 if (activeThreadId === threadId) {
                     stopActiveChatPolling();
                     activeThreadId = null;
@@ -2400,8 +2517,8 @@
             container.innerHTML = productsToShow.map(product => `
                 <div class="product-list-item">
                     <div class="product-list-info">
-                        <h4>${product.name} ${product.image || '🍦'}</h4>
-                        <span>${product.price} € • Остаток: ${product.stock} шт.</span>
+                        <h4>${tn(product.name)} ${product.image || '🍦'}</h4>
+                        <span>${product.price} € • ${t('quantity')}: ${product.stock}</span>
                     </div>
                     <div class="product-list-actions">
                         <button class="product-list-btn edit" onclick="showEditProductModal(${product.id})">
@@ -2419,7 +2536,7 @@
             const container = document.getElementById('adminOrdersList');
 
             if (allOrders.length === 0) {
-                container.innerHTML = '<div class="empty-state">📋 Нет заказов</div>';
+                container.innerHTML = `<div class="empty-state">${t('empty_orders')}</div>`;
                 return;
             }
 
@@ -2429,13 +2546,13 @@
                 return `
                     <div class="order-card">
                         <div class="order-header">
-                            <span class="order-id">Заказ #${order.id}</span>
-                            <span class="order-status ${statusClass}">${order.status_text}</span>
+                            <span class="order-id">#${order.id}</span>
+                            <span class="order-status ${statusClass}">${ts(order.status)}</span>
                         </div>
 
                         <div class="order-info">
                             <div class="order-info-item">
-                                <span>👤 Клиент:</span>
+                                <span>${t('client')}</span>
                                 <span>${order.user_name || 'Неизвестно'} ${order.user_username ? '@' + order.user_username : ''}</span>
                             </div>
                             <div class="order-info-item">
@@ -2445,11 +2562,11 @@
                             ${order.user_id ? `
                             <div class="order-info-item">
                                 <span>💬 Написать:</span>
-                                <button class="product-list-btn edit" onclick="event.stopPropagation(); startChatWithUser(${order.user_id}, '${(order.user_name || '').replace(/'/g, "\\'")}')">Написать клиенту</button>
+                                <button class="product-list-btn edit" onclick="event.stopPropagation(); startChatWithUser(${order.user_id}, '${(order.user_name || '').replace(/'/g, "\\'")}')">${t('write_client')}</button>
                             </div>
                             ` : ''}
                             <div class="order-info-item">
-                                <span>📍 Адрес:</span>
+                                <span>${t('address')}</span>
                                 <span>${order.location}</span>
                             </div>
                             <div class="order-info-item">
@@ -2461,7 +2578,7 @@
                         <div class="order-items">
                             ${order.items.map(item => `
                                 <div class="order-item">
-                                    <span class="order-item-name">${item.name}</span>
+                                    <span class="order-item-name">${tn(item.name)}</span>
                                     <div class="order-item-details">
                                         <span>${item.quantity} × ${item.price} €</span>
                                         <span class="order-item-price">${item.total} €</span>
@@ -2471,29 +2588,29 @@
                         </div>
 
                         <div class="order-total">
-                            Итого: ${order.total} €
+                            ${t('total')} ${order.total} €
                         </div>
 
                         <div class="order-actions">
                             ${order.status === 'pending' ? `
                                 <button class="order-action-btn confirm" onclick="confirmOrder(${order.id})">
-                                    ✅ Подтвердить
+                                    ${t('confirm')}
                                 </button>
                                 <button class="order-action-btn cancel" onclick="cancelOrder(${order.id})">
-                                    ❌ Отменить
+                                    ${t('cancel_order')}
                                 </button>
                             ` : ''}
                             ${order.status === 'cancelled' ? `
                                 <button class="order-action-btn restore" onclick="restoreOrder(${order.id})">
-                                    ↩️ Восстановить
+                                    ${t('restore')}
                                 </button>
                             ` : ''}
                             ${order.status === 'confirmed' ? `
                                 <button class="order-action-btn confirm" onclick="completeOrder(${order.id})">
-                                    👍 Выполнен
+                                    ${t('complete')}
                                 </button>
                                 <button class="order-action-btn cancel" onclick="cancelOrder(${order.id})">
-                                    ❌ Отменить
+                                    ${t('cancel_order')}
                                 </button>
                             ` : ''}
                         </div>
@@ -2515,7 +2632,7 @@
         async function confirmOrder(orderId) {
             try {
                 await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'confirmed' });
-                showToast(`✅ Заказ #${orderId} подтвержден`);
+                showToast(`${t('order_confirmed')} #${orderId}`);
                 await loadAllOrdersFromAPI();
             } catch (e) {
                 showToast(`❌ ${e.message || 'Ошибка подтверждения заказа'}`, true);
@@ -2523,10 +2640,10 @@
         }
 
         async function cancelOrder(orderId) {
-            showConfirm(`Отменить заказ #${orderId}?`, async () => {
+            showConfirm(`${t('order_cancel_confirm')} #${orderId}?`, async () => {
                 try {
                     await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'cancelled' });
-                    showToast(`❌ Заказ #${orderId} отменен`);
+                    showToast(`${t('order_cancelled')} #${orderId}`);
                     await loadAllOrdersFromAPI();
                 } catch (e) {
                     showToast('❌ Ошибка отмены заказа', true);
@@ -2537,7 +2654,7 @@
         async function restoreOrder(orderId) {
             try {
                 await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'pending' });
-                showToast(`🔄 Заказ #${orderId} восстановлен`);
+                showToast(`${t('order_restored')} #${orderId}`);
                 await loadAllOrdersFromAPI();
             } catch (e) {
                 showToast('❌ Ошибка восстановления заказа', true);
@@ -2547,7 +2664,7 @@
         async function completeOrder(orderId) {
             try {
                 await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'completed' });
-                showToast(`👍 Заказ #${orderId} выполнен`);
+                showToast(`${t('order_done')} #${orderId}`);
                 await loadAllOrdersFromAPI();
             } catch (e) {
                 showToast('❌ Ошибка выполнения заказа', true);
@@ -2626,7 +2743,7 @@
                 renderProducts();
             } catch (e) {
                 console.error('Ошибка обновления остатков:', e);
-                showToast('❌ Ошибка обновления остатков', true);
+                showToast(t('err_update'), true);
             }
         }
 
@@ -2657,7 +2774,7 @@
                 renderProducts();
             } catch (e) {
                 console.error('Ошибка удаления товара:', e);
-                showToast('❌ Ошибка удаления товара', true);
+                showToast(t('err_delete'), true);
             }
         }
 
