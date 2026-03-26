@@ -133,6 +133,8 @@ class Database:
                                  AUTOINCREMENT,
                                  order_id
                                  INTEGER,
+                                 product_id
+                                 INTEGER,
                                  product_name
                                  TEXT,
                                  quantity
@@ -205,7 +207,7 @@ class Database:
             return result
 
     async def create_order_from_items(self, user_id, location, items, notes='', delivery_slot='', promo_code='', discount_amount=0):
-        """Создаёт заказ из списка товаров, пришедших из Mini App"""
+        """Создаёт заказ из списка товаров, пришедших из Mini App (без списания склада)."""
         async with aiosqlite.connect(self.db_path) as db:
             try:
                 total = 0
@@ -271,23 +273,14 @@ class Database:
                 order_id = cursor.lastrowid
                 print(f"✅ Создан заказ #{order_id}, сумма: {total}₽")
 
-                # Добавляем товары в заказ и списываем со склада
+                # Добавляем товары в заказ (списание со склада делаем при подтверждении админом)
                 for prod_id_db, name, qty, price in order_items:
                     await db.execute('''
-                                     INSERT INTO order_items (order_id, product_name, quantity, price)
-                                     VALUES (?, ?, ?, ?)
-                                     ''', (order_id, name, qty, price))
+                                     INSERT INTO order_items (order_id, product_id, product_name, quantity, price)
+                                     VALUES (?, ?, ?, ?, ?)
+                                     ''', (order_id, prod_id_db, name, qty, price))
 
-                    await db.execute('''
-                                     UPDATE products
-                                     SET quantity = quantity - ?
-                                     WHERE id = ?
-                                     ''', (qty, prod_id_db))
-
-                    # Проверяем остаток
-                    cursor = await db.execute('SELECT quantity FROM products WHERE id = ?', (prod_id_db,))
-                    new_stock = await cursor.fetchone()
-                    print(f"   • {name} x{qty} - {price * qty}₽ (остаток: {new_stock[0]})")
+                    print(f"   • {name} x{qty} - {price * qty}₽ (ожидает подтверждения)")
 
                 # Очищаем корзину
                 await db.execute('DELETE FROM cart WHERE user_id = ?', (user_id,))
@@ -300,6 +293,112 @@ class Database:
                 print(f"❌ Ошибка при создании заказа: {e}")
                 await db.rollback()
                 return None
+
+    async def _deduct_stock_for_order(self, db, order_id: int):
+        """Списывает склад по позициям заказа, если хватает остатков."""
+        cursor = await db.execute(
+            'SELECT product_id, product_name, quantity FROM order_items WHERE order_id = ?',
+            (order_id,)
+        )
+        items = await cursor.fetchall()
+        if not items:
+            return False, "Нет позиций заказа"
+
+        for product_id, product_name, qty in items:
+            if not product_id:
+                # fallback для старых записей без product_id
+                c = await db.execute('SELECT id FROM products WHERE name = ? AND is_available = 1', (product_name,))
+                row = await c.fetchone()
+                if not row:
+                    return False, f"Товар {product_name} не найден"
+                product_id = row[0]
+
+            c = await db.execute('SELECT quantity FROM products WHERE id = ? AND is_available = 1', (product_id,))
+            row = await c.fetchone()
+            if not row:
+                return False, f"Товар с id {product_id} не найден"
+            stock = row[0]
+            if stock < qty:
+                return False, f"Недостаточно {product_name}: есть {stock}, нужно {qty}"
+
+        # Second pass: update quantities
+        for product_id, product_name, qty in items:
+            if not product_id:
+                c = await db.execute('SELECT id FROM products WHERE name = ? AND is_available = 1', (product_name,))
+                row = await c.fetchone()
+                product_id = row[0]
+
+            await db.execute(
+                'UPDATE products SET quantity = quantity - ? WHERE id = ?',
+                (qty, product_id)
+            )
+        return True, None
+
+    async def _restore_stock_for_order(self, db, order_id: int):
+        """Возвращает склад по позициям заказа (если ранее был списан)."""
+        cursor = await db.execute(
+            'SELECT product_id, product_name, quantity FROM order_items WHERE order_id = ?',
+            (order_id,)
+        )
+        items = await cursor.fetchall()
+        for product_id, product_name, qty in items:
+            if not product_id:
+                c = await db.execute('SELECT id FROM products WHERE name = ?', (product_name,))
+                row = await c.fetchone()
+                if not row:
+                    continue
+                product_id = row[0]
+
+            await db.execute(
+                'UPDATE products SET quantity = quantity + ? WHERE id = ?',
+                (qty, product_id)
+            )
+        return True
+
+    async def update_order_status(self, order_id, status):
+        """Обновляет статус заказа. Списание склада выполняется при confirmed."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+
+            # Текущее состояние заказа
+            cur = await db.execute(
+                'SELECT id, status, COALESCE(stock_deducted, 0) as stock_deducted FROM orders WHERE id = ?',
+                (order_id,)
+            )
+            current = await cur.fetchone()
+            if not current:
+                return None
+
+            prev_status = current["status"]
+            stock_deducted = int(current["stock_deducted"] or 0)
+
+            # При подтверждении списываем со склада (один раз)
+            if status == 'confirmed' and stock_deducted == 0:
+                ok, error = await self._deduct_stock_for_order(db, order_id)
+                if not ok:
+                    await db.rollback()
+                    return {"error": error}
+                await db.execute('UPDATE orders SET stock_deducted = 1 WHERE id = ?', (order_id,))
+
+            # При отмене после списания — возвращаем склад
+            if status == 'cancelled' and stock_deducted == 1 and prev_status in ('confirmed', 'completed'):
+                await self._restore_stock_for_order(db, order_id)
+                await db.execute('UPDATE orders SET stock_deducted = 0 WHERE id = ?', (order_id,))
+
+            await db.execute(
+                'UPDATE orders SET status = ? WHERE id = ?',
+                (status, order_id)
+            )
+            await db.commit()
+
+            cursor = await db.execute('''
+                                      SELECT o.*, u.username, u.first_name
+                                      FROM orders o
+                                               LEFT JOIN users u ON o.user_id = u.user_id
+                                      WHERE o.id = ?
+                                      ''', (order_id,))
+            order = await cursor.fetchone()
+            return dict(order) if order else None
 
     async def get_product_stock(self, product_id):
         async with aiosqlite.connect(self.db_path) as db:
@@ -360,26 +459,6 @@ class Database:
 
             return result
 
-    async def update_order_status(self, order_id, status):
-        """Обновляет статус заказа"""
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute('''
-                             UPDATE orders
-                             SET status = ?
-                             WHERE id = ?
-                             ''', (status, order_id))
-            await db.commit()
-
-            # Получаем информацию о заказе для уведомлений
-            db.row_factory = aiosqlite.Row
-            cursor = await db.execute('''
-                                      SELECT o.*, u.username, u.first_name
-                                      FROM orders o
-                                               LEFT JOIN users u ON o.user_id = u.user_id
-                                      WHERE o.id = ?
-                                      ''', (order_id,))
-            order = await cursor.fetchone()
-            return dict(order) if order else None
 
     async def add_product(self, name, price, quantity):
         async with aiosqlite.connect(self.db_path) as db:
@@ -531,3 +610,97 @@ class Database:
                 ORDER BY total_spent DESC
             ''')
             return [dict(r) for r in await cur.fetchall()]
+
+    async def get_or_create_support_thread(self, user_id: int):
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute('SELECT * FROM support_threads WHERE user_id = ?', (user_id,))
+            row = await cur.fetchone()
+            if row:
+                return dict(row)
+            cur = await db.execute(
+                'INSERT INTO support_threads (user_id, is_open, unread_admin_count) VALUES (?, 1, 0)',
+                (user_id,)
+            )
+            thread_id = cur.lastrowid
+            await db.commit()
+            cur = await db.execute('SELECT * FROM support_threads WHERE id = ?', (thread_id,))
+            row = await cur.fetchone()
+            return dict(row)
+
+    async def add_support_message(self, user_id: int, sender_type: str, sender_id: int | None, text: str):
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute('SELECT * FROM support_threads WHERE user_id = ?', (user_id,))
+            thread = await cur.fetchone()
+            if not thread:
+                cur = await db.execute(
+                    'INSERT INTO support_threads (user_id, is_open, unread_admin_count) VALUES (?, 1, 0)',
+                    (user_id,)
+                )
+                thread_id = cur.lastrowid
+                is_open = 1
+            else:
+                thread_id = thread['id']
+                is_open = int(thread['is_open'])
+
+            if sender_type == 'user' and not is_open:
+                return {"error": "Thread is closed"}
+
+            await db.execute(
+                'INSERT INTO support_messages (thread_id, sender_type, sender_id, text) VALUES (?, ?, ?, ?)',
+                (thread_id, sender_type, sender_id, text)
+            )
+
+            if sender_type == 'user':
+                await db.execute(
+                    'UPDATE support_threads SET unread_admin_count = unread_admin_count + 1, last_message_at = CURRENT_TIMESTAMP WHERE id = ?',
+                    (thread_id,)
+                )
+            else:
+                await db.execute(
+                    'UPDATE support_threads SET is_open = 1, last_message_at = CURRENT_TIMESTAMP WHERE id = ?',
+                    (thread_id,)
+                )
+
+            await db.commit()
+            return {"thread_id": thread_id}
+
+    async def get_support_threads(self):
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute('''
+                SELECT t.id, t.user_id, t.is_open, t.unread_admin_count, t.last_message_at,
+                       u.username, u.first_name,
+                       (SELECT text FROM support_messages sm WHERE sm.thread_id = t.id ORDER BY sm.id DESC LIMIT 1) AS last_message
+                FROM support_threads t
+                LEFT JOIN users u ON u.user_id = t.user_id
+                ORDER BY t.last_message_at DESC, t.id DESC
+            ''')
+            return [dict(r) for r in await cur.fetchall()]
+
+    async def get_support_messages(self, thread_id: int):
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                'SELECT id, thread_id, sender_type, sender_id, text, created_at FROM support_messages WHERE thread_id = ? ORDER BY id ASC',
+                (thread_id,)
+            )
+            messages = [dict(r) for r in await cur.fetchall()]
+            await db.execute('UPDATE support_threads SET unread_admin_count = 0 WHERE id = ?', (thread_id,))
+            await db.commit()
+            return messages
+
+    async def set_support_thread_open(self, thread_id: int, is_open: bool):
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                'UPDATE support_threads SET is_open = ? WHERE id = ?',
+                (1 if is_open else 0, thread_id)
+            )
+            await db.commit()
+
+    async def is_support_thread_open_for_user(self, user_id: int) -> bool:
+        async with aiosqlite.connect(self.db_path) as db:
+            cur = await db.execute('SELECT is_open FROM support_threads WHERE user_id = ?', (user_id,))
+            row = await cur.fetchone()
+            return bool(row[0]) if row else False

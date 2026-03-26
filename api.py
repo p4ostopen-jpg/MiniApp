@@ -56,6 +56,21 @@ def send_telegram_notification(order_id: int, user_name: str, username: str, loc
             print(f"Ошибка отправки уведомления {chat_id}: {e}")
 
 
+def send_telegram_text(chat_id: int, text: str) -> bool:
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps({"chat_id": int(chat_id), "text": text}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        urllib.request.urlopen(req, timeout=7)
+        return True
+    except Exception:
+        return False
+
+
 app = Flask(__name__)
 CORS(app, origins=["*"])  # Mini App и GitHub Pages
 
@@ -324,6 +339,8 @@ def admin_update_order_status(order_id):
 
     order = asyncio.run(_())
     if order:
+        if isinstance(order, dict) and order.get("error"):
+            return jsonify({"error": order["error"]}), 409
         return jsonify({"success": True})
     return jsonify({"error": "Order not found"}), 404
 
@@ -485,6 +502,63 @@ def admin_export_orders():
         lines.append(f"{o['id']},{o.get('user_id','')},{o.get('first_name','').replace(',',' ')},{o.get('location','').replace(',',' ')},{o['total']},{o['status']},{o.get('created_at','')}")
     from flask import Response
     return Response("\n".join(lines), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=orders.csv"})
+
+
+@app.route("/api/admin/chats", methods=["GET"])
+def admin_get_chats():
+    user_id = get_user_id()
+    if not is_admin(user_id):
+        return jsonify({"error": "Admin only"}), 403
+    async def _():
+        return await db.get_support_threads()
+    return jsonify(asyncio.run(_()))
+
+
+@app.route("/api/admin/chats/<int:thread_id>/messages", methods=["GET"])
+def admin_get_chat_messages(thread_id: int):
+    user_id = get_user_id()
+    if not is_admin(user_id):
+        return jsonify({"error": "Admin only"}), 403
+    async def _():
+        return await db.get_support_messages(thread_id)
+    return jsonify(asyncio.run(_()))
+
+
+@app.route("/api/admin/chats/send", methods=["POST"])
+def admin_send_chat_message():
+    user_id = get_user_id()
+    if not is_admin(user_id):
+        return jsonify({"error": "Admin only"}), 403
+    data = request.get_json() or {}
+    target_user_id = int(data.get("user_id", 0))
+    text = (data.get("text") or "").strip()
+    if not target_user_id or not text:
+        return jsonify({"error": "user_id and text required"}), 400
+
+    # 1) send message from bot to user
+    ok = send_telegram_text(target_user_id, f"👨‍💼 Админ:\n{text}")
+    if not ok:
+        return jsonify({"error": "Не удалось отправить сообщение пользователю (возможно, не начал чат с ботом)"}), 409
+
+    # 2) save in support thread and open it
+    async def _():
+        await db.add_support_message(target_user_id, "admin", user_id, text)
+        thread = await db.get_or_create_support_thread(target_user_id)
+        await db.set_support_thread_open(thread["id"], True)
+        return thread["id"]
+    thread_id = asyncio.run(_())
+    return jsonify({"success": True, "thread_id": thread_id})
+
+
+@app.route("/api/admin/chats/<int:thread_id>/close", methods=["PUT"])
+def admin_close_chat(thread_id: int):
+    user_id = get_user_id()
+    if not is_admin(user_id):
+        return jsonify({"error": "Admin only"}), 403
+    async def _():
+        await db.set_support_thread_open(thread_id, False)
+    asyncio.run(_())
+    return jsonify({"success": True})
 
 
 # ============ INIT & RUN ============

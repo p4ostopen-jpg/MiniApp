@@ -1053,9 +1053,11 @@
                 <button class="admin-action-btn update" onclick="showUpdateStockModal()">📦 Обновить остатки</button>
                 <button class="admin-action-btn delete" onclick="showDeleteProductModal()">❌ Удалить товар</button>
                 <button class="admin-action-btn orders" onclick="showCustomersList()">👥 Покупатели</button>
+                <button class="admin-action-btn orders" onclick="toggleChatsSection()">💬 Чаты <span id="chatBadge" style="display:none;background:#ff6b6b;color:white;border-radius:10px;padding:2px 8px;margin-left:6px;font-size:12px;">0</span></button>
                 <button class="admin-action-btn update" onclick="exportOrders()">📥 Экспорт заказов (CSV)</button>
             </div>
             <div id="adminCustomersSection" style="display:none;" class="product-list"></div>
+            <div id="adminChatsSection" style="display:none;" class="product-list"></div>
 
             <div id="adminOrdersSection" style="display: none;">
                 <div class="admin-header">
@@ -1220,6 +1222,9 @@
 
         // Все заказы для админа (из API)
         let allOrders = [];
+        // Поддержка чатов с клиентами
+        let adminChats = [];
+        let activeThreadId = null;
 
         // ==================== API ЗАПРОСЫ ====================
 
@@ -1562,6 +1567,23 @@
             return { latitude: coords.latitude, longitude: coords.longitude };
         }
 
+        function openLocationSettingsIfPossible() {
+            // Telegram clients may expose settings openers in different versions.
+            try {
+                if (tg?.LocationManager && typeof tg.LocationManager.openSettings === 'function') {
+                    tg.LocationManager.openSettings();
+                    return true;
+                }
+                if (typeof tg?.openSettings === 'function') {
+                    tg.openSettings();
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Cannot open settings from Telegram API:', e);
+            }
+            return false;
+        }
+
         async function requestLocationPermission() {
             try {
                 const { latitude, longitude } = await requestDeviceLocation();
@@ -1570,7 +1592,13 @@
                 await getAddressFromCoords(latitude, longitude);
             } catch (error) {
                 console.error('Ошибка геолокации:', error);
-                showToast('❌ Необходимо разрешить геолокацию', true);
+                const opened = openLocationSettingsIfPossible();
+                showToast(
+                    opened
+                        ? '⚙️ Открываю настройки. Включите геолокацию и вернитесь.'
+                        : '❌ Включите геолокацию в настройках телефона и Telegram',
+                    true
+                );
                 document.getElementById('locationPermission').style.display = 'flex';
             }
         }
@@ -1598,6 +1626,11 @@
                             errorMessage = '❌ Время ожидания истекло';
                             break;
                     }
+                }
+
+                // If location services are disabled on device, try opening settings.
+                if (String(errorMessage).includes('недоступна') || String(errorMessage).includes('запрещен')) {
+                    openLocationSettingsIfPossible();
                 }
 
                 showToast(errorMessage, true);
@@ -1652,6 +1685,17 @@
         async function refreshMain() {
             await loadCatalogFromAPI();
             await loadOrdersFromAPI();
+            if (currentUser.is_admin) {
+                await loadAdminChats();
+                setInterval(async () => {
+                    if (!currentUser.is_admin) return;
+                    await loadAdminChats();
+                    if (document.getElementById('adminChatsSection').style.display === 'block' && activeThreadId) {
+                        const chat = adminChats.find(t => t.id === activeThreadId);
+                        if (chat) await openChatThread(activeThreadId, chat.user_id);
+                    }
+                }, 10000);
+            }
             showToast('✅ Оновлено');
         }
 
@@ -1924,12 +1968,16 @@
             await loadAdminProductsFromAPI();
             await loadAllOrdersFromAPI();
             await loadAdminAnalytics();
+            await loadAdminChats();
 
             if (document.getElementById('adminOrdersSection').style.display === 'block') {
                 renderAdminOrders();
             }
             if (document.getElementById('adminCustomersSection').style.display === 'block') {
                 renderCustomersList();
+            }
+            if (document.getElementById('adminChatsSection').style.display === 'block') {
+                renderChatsSection();
             }
 
             showToast('👨‍💼 Панель администратора загружена');
@@ -1964,11 +2012,121 @@
                             <h4>${c.first_name || 'Без имени'} ${c.username ? '@' + c.username : ''}</h4>
                             <span>ID: ${c.user_id || '—'} • Заказов: ${c.order_count || 0} • Потрачено: ${c.total_spent || 0} €</span>
                         </div>
-                        ${c.user_id ? `<a href="tg://user?id=${c.user_id}" target="_blank" class="msg-user-link">💬 Написать</a>` : ''}
+                        ${c.user_id ? `<button class="product-list-btn edit" onclick="startChatWithUser(${c.user_id}, '${(c.first_name || '').replace(/'/g, "\\'")}')">💬 Написать</button>` : ''}
                     </div>`
                 ).join('') || '<div class="empty-state">Нет покупателей</div>';
             } catch (e) {
                 showToast('Ошибка загрузки', true);
+            }
+        }
+
+        async function loadAdminChats() {
+            if (!currentUser.is_admin) return;
+            try {
+                adminChats = await apiRequest('GET', '/api/admin/chats');
+                const unread = adminChats.reduce((s, t) => s + (t.unread_admin_count || 0), 0);
+                const badge = document.getElementById('chatBadge');
+                if (badge) {
+                    badge.style.display = unread > 0 ? 'inline-block' : 'none';
+                    badge.innerText = String(unread);
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки чатов:', e);
+            }
+        }
+
+        async function toggleChatsSection() {
+            const section = document.getElementById('adminChatsSection');
+            section.style.display = section.style.display === 'block' ? 'none' : 'block';
+            if (section.style.display === 'block') {
+                await renderChatsSection();
+            }
+        }
+
+        async function renderChatsSection() {
+            await loadAdminChats();
+            const section = document.getElementById('adminChatsSection');
+            if (!adminChats.length) {
+                section.innerHTML = '<div class="empty-state">💬 Чатов пока нет</div>';
+                return;
+            }
+            section.innerHTML = adminChats.map(t => `
+                <div class="product-list-item">
+                    <div class="product-list-info">
+                        <h4>${t.first_name || 'Без имени'} ${t.username ? '@' + t.username : ''}</h4>
+                        <span>ID: ${t.user_id} • ${t.is_open ? '🟢 Открыт' : '🔴 Закрыт'} • ${t.last_message || ''}</span>
+                    </div>
+                    <div class="product-list-actions">
+                        ${t.unread_admin_count > 0 ? `<span style="background:#ff6b6b;color:#fff;border-radius:10px;padding:2px 8px;font-size:12px;">${t.unread_admin_count}</span>` : ''}
+                        <button class="product-list-btn edit" onclick="openChatThread(${t.id}, ${t.user_id})">Открыть</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function startChatWithUser(userId, firstName) {
+            const text = prompt(`Сообщение для ${firstName || 'клиента'}:`);
+            if (!text || !text.trim()) return;
+            try {
+                const r = await apiRequest('POST', '/api/admin/chats/send', { user_id: userId, text: text.trim() });
+                showToast('✅ Сообщение отправлено');
+                await openChatThread(r.thread_id, userId);
+            } catch (e) {
+                showToast('❌ Не удалось отправить сообщение', true);
+            }
+        }
+
+        async function openChatThread(threadId, userId) {
+            activeThreadId = threadId;
+            const messages = await apiRequest('GET', `/api/admin/chats/${threadId}/messages`);
+            const section = document.getElementById('adminChatsSection');
+            const chat = adminChats.find(t => t.id === threadId);
+            section.style.display = 'block';
+            section.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3>💬 Чат: ${chat?.first_name || ''} ${chat?.username ? '@' + chat.username : ''}</h3>
+                    <div style="display:flex;gap:8px;">
+                        <button class="product-list-btn edit" onclick="renderChatsSection()">← К списку</button>
+                        <button class="product-list-btn delete" onclick="closeChatThread(${threadId})">Закрыть чат</button>
+                    </div>
+                </div>
+                <div id="chatMessages" style="max-height:320px;overflow:auto;border:1px solid #eef2f5;border-radius:12px;padding:10px;background:#fafcff;">
+                    ${messages.map(m => `
+                        <div style="margin:8px 0;text-align:${m.sender_type === 'admin' ? 'right' : 'left'};">
+                            <span style="display:inline-block;padding:8px 10px;border-radius:10px;background:${m.sender_type === 'admin' ? '#dbeafe' : '#f1f5f9'};">
+                                <b>${m.sender_type === 'admin' ? 'Админ' : 'Клиент'}:</b> ${m.text}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px;">
+                    <input id="chatInput" class="modal-input" placeholder="Введите сообщение..." />
+                    <button class="modal-btn save" onclick="sendChatMessage(${userId})">Отправить</button>
+                </div>
+            `;
+            await loadAdminChats();
+        }
+
+        async function sendChatMessage(userId) {
+            const el = document.getElementById('chatInput');
+            const text = (el?.value || '').trim();
+            if (!text) return;
+            try {
+                await apiRequest('POST', '/api/admin/chats/send', { user_id: userId, text });
+                el.value = '';
+                await openChatThread(activeThreadId, userId);
+            } catch (e) {
+                showToast('❌ Ошибка отправки', true);
+            }
+        }
+
+        async function closeChatThread(threadId) {
+            try {
+                await apiRequest('PUT', `/api/admin/chats/${threadId}/close`, {});
+                showToast('✅ Чат закрыт');
+                await renderChatsSection();
+            } catch (e) {
+                showToast('❌ Не удалось закрыть чат', true);
             }
         }
 
@@ -2043,7 +2201,7 @@
                             ${order.user_id ? `
                             <div class="order-info-item">
                                 <span>💬 Написать:</span>
-                                <a href="tg://user?id=${order.user_id}" target="_blank" class="msg-user-link" onclick="event.stopPropagation()">Открыть в Telegram</a>
+                                <button class="product-list-btn edit" onclick="event.stopPropagation(); startChatWithUser(${order.user_id}, '${(order.user_name || '').replace(/'/g, "\\'")}')">Написать клиенту</button>
                             </div>
                             ` : ''}
                             <div class="order-info-item">
@@ -2116,7 +2274,7 @@
                 showToast(`✅ Заказ #${orderId} подтвержден`);
                 await loadAllOrdersFromAPI();
             } catch (e) {
-                showToast('❌ Ошибка подтверждения заказа', true);
+                showToast(`❌ ${e.message || 'Ошибка подтверждения заказа'}`, true);
             }
         }
 
@@ -2396,6 +2554,12 @@
         window.restoreOrder=restoreOrder;
         window.completeOrder=completeOrder;
         window.hideModal=hideModal
+        window.showCustomersList=showCustomersList;
+        window.toggleChatsSection=toggleChatsSection;
+        window.startChatWithUser=startChatWithUser;
+        window.openChatThread=openChatThread;
+        window.sendChatMessage=sendChatMessage;
+        window.closeChatThread=closeChatThread;
     </script>
 </body>
 </html>

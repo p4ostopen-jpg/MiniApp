@@ -139,6 +139,11 @@ async def admin_confirm_order(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[1])
     order = await db.update_order_status(order_id, 'confirmed')
 
+    if isinstance(order, dict) and order.get("error"):
+        await callback.message.edit_text(f"❌ Не удалось подтвердить заказ: {order['error']}")
+        await callback.answer()
+        return
+
     if order:
         try:
             await callback.bot.send_message(

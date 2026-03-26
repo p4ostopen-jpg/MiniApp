@@ -43,6 +43,26 @@ async def run_migrations(db_path: str):
                 PRIMARY KEY (product_id, user_id)
             )
         ''')
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS support_threads (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER UNIQUE NOT NULL,
+                is_open INTEGER DEFAULT 1,
+                unread_admin_count INTEGER DEFAULT 0,
+                last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS support_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                thread_id INTEGER NOT NULL,
+                sender_type TEXT NOT NULL, -- 'admin' | 'user'
+                sender_id INTEGER,
+                text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(thread_id) REFERENCES support_threads(id)
+            )
+        ''')
 
         # Добавляем колонки в orders если их нет
         try:
@@ -62,7 +82,15 @@ async def run_migrations(db_path: str):
         except Exception:
             pass
         try:
+            await db.execute('ALTER TABLE orders ADD COLUMN stock_deducted INTEGER DEFAULT 0')
+        except Exception:
+            pass
+        try:
             await db.execute('ALTER TABLE products ADD COLUMN category_id INTEGER')
+        except Exception:
+            pass
+        try:
+            await db.execute('ALTER TABLE order_items ADD COLUMN product_id INTEGER')
         except Exception:
             pass
 

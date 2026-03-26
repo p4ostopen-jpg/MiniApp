@@ -122,6 +122,47 @@ async def web_app_handler(message: Message):
     except Exception as e:
         logger.error(f"❌ Общая ошибка: {e}")
 
+
+@dp.message(F.text)
+async def support_reply_handler(message: Message):
+    # Ignore commands
+    if not message.text or message.text.startswith('/'):
+        return
+
+    user_id = message.from_user.id
+    # Ignore admins to avoid loops/noise
+    if user_id in ADMIN_IDS:
+        return
+
+    try:
+        is_open = await db.is_support_thread_open_for_user(user_id)
+        if not is_open:
+            return
+
+        saved = await db.add_support_message(
+            user_id=user_id,
+            sender_type="user",
+            sender_id=user_id,
+            text=message.text.strip()
+        )
+        if isinstance(saved, dict) and saved.get("error"):
+            return
+
+        # Notify admins about a new reply
+        notif = (
+            f"💬 Новый ответ от клиента\n"
+            f"👤 {message.from_user.full_name} (@{message.from_user.username or '—'})\n"
+            f"🆔 {user_id}\n\n"
+            f"{message.text}"
+        )
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, notif)
+            except Exception as e:
+                logger.error(f"Ошибка уведомления админа {admin_id}: {e}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка support_reply_handler: {e}")
+
 async def main():
     await db.create_tables()
 
