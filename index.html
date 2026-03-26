@@ -1664,6 +1664,12 @@
                 }
 
                 showToast(errorMessage, true);
+                // Always provide a usable fallback
+                const locationInput = document.getElementById('location');
+                if (locationInput) {
+                    locationInput.focus();
+                    locationInput.placeholder = 'Введите адрес вручную (геолокация выключена)';
+                }
             }
         }
 
