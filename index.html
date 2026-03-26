@@ -986,6 +986,7 @@
                 <div id="locationPermission" class="location-permission" style="display: none;">
                     <span>📍 Для автоматического определения адреса разрешите доступ к геолокации</span>
                     <button onclick="requestLocationPermission()">Дозволити</button>
+                    <button onclick="openLocationSettingsIfPossible(); showLocationEnableHint();" style="background:#ff9800;">Налаштування</button>
                 </div>
                 <div class="saved-addresses" id="savedAddresses"></div>
                 <div class="location-buttons">
@@ -1225,6 +1226,8 @@
         // Поддержка чатов с клиентами
         let adminChats = [];
         let activeThreadId = null;
+        let activeThreadUserId = null;
+        let activeChatPollTimer = null;
 
         // ==================== API ЗАПРОСЫ ====================
 
@@ -1534,7 +1537,11 @@
                     await new Promise((resolve) => lm.init(resolve));
                 }
                 if (typeof lm.requestLocation === 'function') {
-                    return await lm.requestLocation();
+                    // Some clients hang forever when GPS is disabled.
+                    const timeout = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('LOCATION_TIMEOUT')), 12000)
+                    );
+                    return await Promise.race([lm.requestLocation(), timeout]);
                 }
             } catch (e) {
                 console.warn('Telegram LocationManager failed:', e);
@@ -1567,6 +1574,17 @@
             return { latitude: coords.latitude, longitude: coords.longitude };
         }
 
+        function showLocationEnableHint() {
+            const ua = (navigator.userAgent || '').toLowerCase();
+            let hint = 'Включите геолокацию в настройках телефона и Telegram, затем вернитесь и нажмите "Указать местоположение".';
+            if (ua.includes('android')) {
+                hint = 'Android: Настройки → Местоположение → Вкл. Также разрешите Telegram доступ к геоданным.';
+            } else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) {
+                hint = 'iOS: Settings → Privacy & Security → Location Services → ON. Для Telegram выберите While Using.';
+            }
+            showToast(`⚙️ ${hint}`, true);
+        }
+
         function openLocationSettingsIfPossible() {
             // Telegram clients may expose settings openers in different versions.
             try {
@@ -1576,6 +1594,16 @@
                 }
                 if (typeof tg?.openSettings === 'function') {
                     tg.openSettings();
+                    return true;
+                }
+                // Try platform links as fallback.
+                const ua = (navigator.userAgent || '').toLowerCase();
+                if (ua.includes('android')) {
+                    window.location.href = 'intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end';
+                    return true;
+                }
+                if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) {
+                    window.location.href = 'app-settings:';
                     return true;
                 }
             } catch (e) {
@@ -1593,6 +1621,7 @@
             } catch (error) {
                 console.error('Ошибка геолокации:', error);
                 const opened = openLocationSettingsIfPossible();
+                showLocationEnableHint();
                 showToast(
                     opened
                         ? '⚙️ Открываю настройки. Включите геолокацию и вернитесь.'
@@ -1631,6 +1660,7 @@
                 // If location services are disabled on device, try opening settings.
                 if (String(errorMessage).includes('недоступна') || String(errorMessage).includes('запрещен')) {
                     openLocationSettingsIfPossible();
+                    showLocationEnableHint();
                 }
 
                 showToast(errorMessage, true);
@@ -2040,6 +2070,10 @@
             section.style.display = section.style.display === 'block' ? 'none' : 'block';
             if (section.style.display === 'block') {
                 await renderChatsSection();
+            } else {
+                stopActiveChatPolling();
+                activeThreadId = null;
+                activeThreadUserId = null;
             }
         }
 
@@ -2065,19 +2099,20 @@
         }
 
         async function startChatWithUser(userId, firstName) {
-            const text = prompt(`Сообщение для ${firstName || 'клиента'}:`);
-            if (!text || !text.trim()) return;
             try {
-                const r = await apiRequest('POST', '/api/admin/chats/send', { user_id: userId, text: text.trim() });
-                showToast('✅ Сообщение отправлено');
+                const r = await apiRequest('POST', '/api/admin/chats/open', { user_id: userId });
+                showToast('💬 Чат открыт. Ожидаем ответ клиента.');
                 await openChatThread(r.thread_id, userId);
             } catch (e) {
-                showToast('❌ Не удалось отправить сообщение', true);
+                showToast('❌ Не удалось открыть чат', true);
             }
         }
 
         async function openChatThread(threadId, userId) {
             activeThreadId = threadId;
+            activeThreadUserId = userId;
+            // Opening chat activates "waiting for user reply" mode
+            await apiRequest('PUT', `/api/admin/chats/${threadId}/open`, {});
             const messages = await apiRequest('GET', `/api/admin/chats/${threadId}/messages`);
             const section = document.getElementById('adminChatsSection');
             const chat = adminChats.find(t => t.id === threadId);
@@ -2105,6 +2140,37 @@
                 </div>
             `;
             await loadAdminChats();
+            startActiveChatPolling();
+        }
+
+        async function refreshActiveChatMessages() {
+            if (!activeThreadId || !activeThreadUserId) return;
+            const messages = await apiRequest('GET', `/api/admin/chats/${activeThreadId}/messages`);
+            const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) return;
+            chatMessages.innerHTML = messages.map(m => `
+                <div style="margin:8px 0;text-align:${m.sender_type === 'admin' ? 'right' : 'left'};">
+                    <span style="display:inline-block;padding:8px 10px;border-radius:10px;background:${m.sender_type === 'admin' ? '#dbeafe' : '#f1f5f9'};">
+                        <b>${m.sender_type === 'admin' ? 'Админ' : 'Клиент'}:</b> ${m.text}
+                    </span>
+                </div>
+            `).join('');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            await loadAdminChats();
+        }
+
+        function startActiveChatPolling() {
+            if (activeChatPollTimer) clearInterval(activeChatPollTimer);
+            activeChatPollTimer = setInterval(async () => {
+                try { await refreshActiveChatMessages(); } catch (e) {}
+            }, 3000);
+        }
+
+        function stopActiveChatPolling() {
+            if (activeChatPollTimer) {
+                clearInterval(activeChatPollTimer);
+                activeChatPollTimer = null;
+            }
         }
 
         async function sendChatMessage(userId) {
@@ -2124,6 +2190,11 @@
             try {
                 await apiRequest('PUT', `/api/admin/chats/${threadId}/close`, {});
                 showToast('✅ Чат закрыт');
+                if (activeThreadId === threadId) {
+                    stopActiveChatPolling();
+                    activeThreadId = null;
+                    activeThreadUserId = null;
+                }
                 await renderChatsSection();
             } catch (e) {
                 showToast('❌ Не удалось закрыть чат', true);
