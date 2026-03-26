@@ -103,28 +103,38 @@
             box-shadow: 0 8px 20px rgba(74, 111, 165, 0.3);
             z-index: 101;
         }
+
         .lang-menu {
             position: fixed;
             bottom: 96px;
             left: 24px;
             background: white;
             border-radius: 14px;
-            box-shadow: 0 8px 10px rgba(0, 0, 0, 0.14);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
             padding: 6px;
             z-index: 102;
             display: none;
-            min-width: 70px;
+
+            width: auto; /* ширина по содержимому */
+            max-width: 90vw; /* не вылезет за экран */
         }
+
         .lang-option {
-            width: 100%;
+            width: auto; /* не растягиваем на 100% */
+            display: block;
             border: none;
             background: transparent;
             text-align: left;
-            padding: 10px;
+            padding: 8px 10px;
             border-radius: 10px;
             cursor: pointer;
             font-weight: 600;
+
+            color: black; /* 👈 чёрный текст */
+            white-space: nowrap; /* текст в одну строку */
+            font-size: clamp(12px, 3vw, 16px); /* адаптивный размер */
         }
+
         .lang-option:hover {
             background: #f3f6fa;
         }
