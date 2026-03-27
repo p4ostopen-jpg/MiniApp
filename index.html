@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Жи Ши - магазин ароматираторов</title>
     <style>
         * {
@@ -43,24 +43,25 @@
             font-size: 16px;
         }
 
-        /* Навигация - плавающая панель */
-.nav-menu {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-    background: white;
-    padding: 8px;
-    border-radius: 30px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    flex-wrap: wrap;
-    position: sticky;
-    top: 16px;
-    z-index: 99;
-    backdrop-filter: blur(10px);
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(255,255,255,0.5);
-}
+        .nav-menu {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 8px;
+            border-radius: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            flex-wrap: wrap;
 
+            position: sticky;
+
+            top: calc(env(safe-area-inset-top) + 8px); /* защита от выреза */
+
+            z-index: 99;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
         /* Контейнер для контента, чтобы не прилипало к краям */
         .container {
             max-width: 600px;
