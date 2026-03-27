@@ -1112,8 +1112,30 @@
                 <button class="admin-action-btn orders" onclick="toggleChatsSection()" id="adminChatsBtn">💬 Чаты <span id="chatBadge" style="display:none;background:#ff6b6b;color:white;border-radius:10px;padding:2px 8px;margin-left:6px;font-size:12px;">0</span></button>
                 <button class="admin-action-btn update" onclick="exportOrders()" data-i18n="admin_export">📥 Экспорт заказов (CSV)</button>
             </div>
-            <div id="adminCustomersSection" style="display:none;" class="product-list"></div>
-            <div id="adminChatsSection" style="display:none;" class="product-list"></div>
+
+            <div id="adminCustomersSection" style="display: none;">
+                <div class="admin-header">
+                    <h2 data-i18n="admin_customers_manage">👥 Покупатели</h2>
+                    <button onclick="hideCustomersSection()"
+                            style="background: none; border: none; color: #4a6fa5; cursor: pointer;">
+                        <span data-i18n="close">✕ Закрыть</span>
+                    </button>
+                </div>
+
+                <div id="adminCustomersList"></div>
+            </div>
+
+            <div id="adminChatsSection" style="display: none;">
+                <div class="admin-header">
+                    <h2 data-i18n="admin_chats_manage">💬 Чаты покупателей</h2>
+                    <button onclick="hideChatsSection()"
+                            style="background: none; border: none; color: #4a6fa5; cursor: pointer;">
+                        <span data-i18n="close">✕ Закрыть</span>
+                    </button>
+                </div>
+
+                <div id="adminChatsList"></div>
+            </div>
 
             <div id="adminOrdersSection" style="display: none;">
                 <div class="admin-header">
@@ -1911,21 +1933,38 @@
 
         async function requestLocationPermission() {
             try {
-                const { latitude, longitude } = await requestDeviceLocation();
+
+                const {latitude, longitude} = await requestDeviceLocation();
+
                 document.getElementById('locationPermission').style.display = 'none';
-                showToast('✅ Доступ к геолокации разрешен');
+
+                showToast('✅ Геолокация получена');
+
                 await getAddressFromCoords(latitude, longitude);
+
             } catch (error) {
-                console.error('Ошибка геолокации:', error);
-                const opened = promptEnableLocationSettings();
-                showLocationEnableHint();
-                showToast(
-                    opened
-                        ? '⚙️ Открываю настройки. Включите геолокацию и вернитесь.'
-                        : '❌ Включите геолокацию в настройках телефона и Telegram',
-                    true
-                );
+
+                console.log("LOCATION ERROR", error);
+
                 document.getElementById('locationPermission').style.display = 'flex';
+
+                let message = "❌ Включите геолокацию на устройстве";
+
+                if (error.code === 1) {
+                    message = "❌ Telegram не имеет доступа к геолокации";
+                }
+
+                if (error.code === 2) {
+                    message = "❌ GPS отключен";
+                }
+
+                if (error.code === 3) {
+                    message = "❌ Таймаут получения геолокации";
+                }
+
+                showToast(message, true);
+
+                showLocationEnableHint();
             }
         }
 
@@ -2639,6 +2678,18 @@
 
         function hideAllOrders() {
             document.getElementById('adminOrdersSection').style.display = 'none';
+        }
+
+        function hideCustomersSection() {
+            document.getElementById('adminCustomersSection').style.display = 'none';
+        }
+
+        function hideChatsSection() {
+            document.getElementById('adminChatsSection').style.display = 'none';
+
+            stopActiveChatPolling();
+            activeThreadId = null;
+            activeThreadUserId = null;
         }
 
         // Управление заказами (через API)
