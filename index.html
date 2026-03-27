@@ -15,7 +15,11 @@
         body {
             background: linear-gradient(145deg, #f6f9fc 0%, #e6f0f5 100%);
             min-height: 100vh;
-            padding: 16px;
+
+            padding-top: max(env(safe-area-inset-top), 16px);
+            padding-left: max(env(safe-area-inset-left), 16px);
+            padding-right: max(env(safe-area-inset-right), 16px);
+            padding-bottom: 16px;
         }
 
         .container {
