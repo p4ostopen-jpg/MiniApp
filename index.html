@@ -1423,16 +1423,40 @@
             }
         };
         const PRODUCT_NAME_I18N = {
-            'Ягідний Лимонад': { uk: 'Ягідний Лимонад', ru: 'Ягодный Лимонад', de: 'Beerenlimonade' },
-            'Мятний Виноград': { uk: 'Мятний Виноград', ru: 'Мятный Виноград', de: 'Minztraube' },
-            'Мятна чорника': { uk: 'Мятна чорника', ru: 'Мятная Черника', de: 'Minz-Blaubeere' },
-            'Вишня-лимон': { uk: 'Вишня-лимон', ru: 'Вишня-лимон', de: 'Kirsche-Zitrone' },
-            'Енергетик': { uk: 'Енергетик', ru: 'Энергетик', de: 'Energy' },
-            'Тропік': { uk: 'Тропік', ru: 'Тропик', de: 'Tropik' },
-            'Тост з чорницею': { uk: 'Тост з чорницею', ru: 'Тост с Черникой', de: 'Toast mit Blaubeere' },
-            'Чорниця-малина': { uk: 'Чорниця-малина', ru: 'Черника-малина', de: 'Blaubeere-Himbeere' },
-            'Ягоди з хвоєю': { uk: 'Ягоди з хвоєю', ru: 'Ягоды с Хвоей', de: 'Beeren mit Nadelaroma' },
-            'Лічі-маракуя': { uk: 'Лічі-маракуя', ru: 'Личи-маракуйя', de: 'Litschi-Maracuja' }
+            //'Ягідний Лимонад': { uk: 'Ягідний Лимонад', ru: 'Ягодный Лимонад', de: 'Beerenlimonade' },
+            //'Мятний Виноград': { uk: 'Мятний Виноград', ru: 'Мятный Виноград', de: 'Minztraube' },
+            //'Мятна чорника': { uk: 'Мятна чорника', ru: 'Мятная Черника', de: 'Minz-Blaubeere' },
+            //'Вишня-лимон': { uk: 'Вишня-лимон', ru: 'Вишня-лимон', de: 'Kirsche-Zitrone' },
+            //'Енергетик': { uk: 'Енергетик', ru: 'Энергетик', de: 'Energy' },
+            //'Тропік': { uk: 'Тропік', ru: 'Тропик', de: 'Tropik' },
+            //'Тост з чорницею': { uk: 'Тост з чорницею', ru: 'Тост с Черникой', de: 'Toast mit Blaubeere' },
+            //'Чорниця-малина': { uk: 'Чорниця-малина', ru: 'Черника-малина', de: 'Blaubeere-Himbeere' },
+            //'Ягоди з хвоєю': { uk: 'Ягоди з хвоєю', ru: 'Ягоды с Хвоей', de: 'Beeren mit Nadelaroma' },
+            //'Лічі-маракуя': { uk: 'Лічі-маракуя', ru: 'Личи-маракуйя', de: 'Litschi-Maracuja' }
+            'Ожина кисла Малина': { uk: 'Ожина кисла Малина', ru: 'Ежевика кислая Малина', de: 'Saure Brombeere Himbeere' },
+            'Виноград Енергетик': { uk: 'Виноград Енергетик', ru: 'Виноград Энергетик', de: 'Traube Energy' },
+            'Малина Енергетик': { uk: 'Малина Енергетик', ru: 'Малина Энергетик', de: 'Himbeere Energy' },
+            'Полуниця Чорниця ': { uk: 'Полуниця Чорниця ', ru: 'Клубника Черника', de: 'Erdbeere Heidelbeere' },
+            'Кавун Лимон': { uk: 'Кавун Лимон', ru: 'Арбуз Лемон', de: 'Wassermelone Zitrone' },
+            'Виноград Чорниця': { uk: 'Виноград Чорниця', ru: 'Виноград Черника', de: 'Traube Heidelbeere' },
+            'Pink Lemonade': { uk: 'Pink Lemonade', ru: 'Pink Lemonade', de: 'Pink Lemonade' },
+            'Blue Lemonade Полуниця': { uk: 'Blue Lemonade Полуниця', ru: 'Blue Lemonade Клубника', de: 'Blue Lemonade Erdbeere' },
+            'Кавун Яблуко': { uk: 'Кавун Яблуко', ru: 'Арбуз Яблоко', de: 'Wassermelone Apfel' },
+            'Вишня Кавун': { uk: 'Вишня Кавун', ru: 'Вишня Арбуз', de: 'Kirsche Wassermelone' },
+            'Полуниця Виноград': { uk: 'Полуниця Виноград', ru: 'Клубника Виноград', de: 'Erdbeere Traube' },
+            'Журавлина Кактус': { uk: 'Журавлина Кактус', ru: 'Клюква Кактус', de: 'Cranberry Kaktus' },
+            'Вишня Енергетик': { uk: 'Вишня Енергетик', ru: 'Вишня Энергетик', de: 'Kirsche Energy' },
+            'Вишня': { uk: 'Вишня', ru: 'Вишня', de: 'Kirsche' },
+            'Кавун': { uk: 'Кавун', ru: 'Арбуз', de: 'Wassermelone' },
+            'Ягоди': { uk: 'Ягоди', ru: 'Ягоды', de: 'Beeren' },
+            'Ментол': { uk: 'Ментол', ru: 'Мята', de: 'Minze' },
+            'Вишня Ментол ': { uk: 'Вишня Ментол ', ru: 'Вишня Мята', de: 'Kirsche Minze' },
+            'Кавун Ментол': { uk: 'Кавун Ментол', ru: 'Арбуз Мята', de: 'Wassermelone Minze' },
+            'Гранат': { uk: 'Гранат', ru: 'Гранат', de: 'Granatapfel' },
+            'Vozol Star 20000 5%': { uk: 'Vozol Star 20000 5%', ru: 'Vozol Star 20000 5%', de: 'Vozol Star 20000 5%' }
+
+
+
         };
         function tn(name) { return (PRODUCT_NAME_I18N[name] && PRODUCT_NAME_I18N[name][currentLang]) || name; }
         function ts(status) {
