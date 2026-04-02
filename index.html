@@ -1213,17 +1213,39 @@
         // Инициализация Telegram WebApp
         console.log('=== Telegram WebApp Script Loading ===');
         console.log('window.Telegram:', typeof window.Telegram);
-        
+
         const tg = window.Telegram?.WebApp;
         if (!tg) {
-            console.error('❌ Telegram.WebApp not available! This might not be running in Telegram.');
+            console.error('❌ Telegram.WebApp not available!');
         } else {
-            console.log('✅ Telegram.WebApp available');
             tg.ready();
             tg.expand();
             tg.MainButton.hide();
-            console.log('Telegram initData:', tg.initData ? 'present' : 'missing');
         }
+
+        // Функция для безопасного получения initData
+        function getInitData() {
+            if (tg && tg.initData) {
+                return tg.initData;
+            }
+            // Fallback для разработки (только локально!)
+            if (window.location.hostname === 'localhost') {
+                return '';
+            }
+            return '';
+        }
+
+        // Текущий пользователь (только базовые данные, БЕЗ is_admin!)
+        const _tgUser = tg?.initDataUnsafe?.user || {};
+        const currentUser = {
+            id: _tgUser.id || 0,
+            username: _tgUser.username || '',
+            first_name: _tgUser.first_name || 'Пользователь'
+            // НЕТ is_admin ЗДЕСЬ!
+        };
+
+        console.log('Current user:', currentUser);
+        console.log('InitData available:', !!getInitData());
 
         // Получить user из Telegram — initDataUnsafe или парсинг tgWebAppData из URL hash
         function getTelegramUser() {
@@ -1250,11 +1272,7 @@
 
         const _tgUser = getTelegramUser();
 
-        // ==================== КОНФИГУРАЦИЯ API ====================
         const API_BASE_URL = "https://pleasurelessly-tingly-carlos.ngrok-free.dev";
-
-        // ==================== ДАННЫЕ ====================
-        const ADMIN_IDS = [539040973,905385553,8056418913];
 
         const currentUser = {
             id: _tgUser.id || 0,
@@ -1262,6 +1280,61 @@
             first_name: _tgUser.first_name || 'Пользователь',
             is_admin: ADMIN_IDS.includes(_tgUser.id || 0)
         };
+
+        let isAdmin = false; // Глобальная переменная для прав админа
+
+        async function checkAdminStatus() {
+            try {
+                const initData = getInitData();
+
+                // Если нет initData, значит открыто не из Telegram
+                if (!initData) {
+                    console.log('No initData, admin check skipped');
+                    document.getElementById('adminNavBtn').style.display = 'none';
+                    return false;
+                }
+
+                console.log('Checking admin status via secure API...');
+
+                const response = await fetch(`${API_BASE_URL}/api/admin/check`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Telegram-Init-Data': initData,
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({initData: initData})
+                });
+
+                if (!response.ok) {
+                    console.error('Admin check failed:', response.status);
+                    document.getElementById('adminNavBtn').style.display = 'none';
+                    return false;
+                }
+
+                const result = await response.json();
+                console.log('Admin check result:', result);
+
+                isAdmin = result.is_admin === true;
+
+                if (isAdmin) {
+                    console.log('✅ User is ADMIN! Showing admin panel');
+                    document.getElementById('adminNavBtn').style.display = 'block';
+                    if (document.getElementById('adminWelcome')) {
+                        document.getElementById('adminWelcome').innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
+                    }
+                } else {
+                    console.log('❌ User is NOT admin');
+                    document.getElementById('adminNavBtn').style.display = 'none';
+                }
+
+                return isAdmin;
+            } catch (e) {
+                console.error('Error checking admin status:', e);
+                document.getElementById('adminNavBtn').style.display = 'none';
+                return false;
+            }
+        }
 
         // ==================== I18N ====================
         const I18N = {
@@ -1533,21 +1606,24 @@
         let activeChatPollTimer = null;
 
         // ==================== API ЗАПРОСЫ ====================
-
         async function apiRequest(method, path, body = null) {
-            // Cache-busting timestamp for GET requests (Telegram WebView can be aggressive with caching)
-            const separator = path.includes('?') ? '&' : '?';
-            const cacheBuster = method === 'GET' ? `${separator}_t=${Date.now()}` : '';
+            const cacheBuster = method === 'GET' ? `?_t=${Date.now()}` : '';
             const fullUrl = API_BASE_URL + path + cacheBuster;
 
-            // Important: do NOT send extra request headers (Cache-Control/Pragma/Expires),
-            // otherwise CORS preflight may fail if server doesn't allow them.
             const headers = {
-                'X-User-Id': String(currentUser.id),
-                'ngrok-skip-browser-warning': 'true', // Skip ngrok-free.dev warning page
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
             };
-            if (body !== null) {
-                headers['Content-Type'] = 'application/json';
+
+            // ВАЖНО: Добавляем initData для аутентификации
+            const initData = getInitData();
+            if (initData) {
+                headers['X-Telegram-Init-Data'] = initData;
+            }
+
+            // Добавляем user_id только для информации (не для аутентификации!)
+            if (currentUser.id) {
+                headers['X-User-Id'] = String(currentUser.id);
             }
 
             const opts = {
@@ -1557,33 +1633,25 @@
             };
             if (body !== null) opts.body = JSON.stringify(body);
 
-            console.log(`[API] ${method} ${fullUrl}`, { headers, body: body ? 'present' : null });
+            console.log(`[API] ${method} ${fullUrl}`);
 
             try {
                 const res = await fetch(fullUrl, opts);
-                console.log(`[API] Response status: ${res.status}`, res.headers);
-                
+
                 if (!res.ok) {
                     const errText = await res.text().catch(() => '');
                     let err;
                     try {
                         err = JSON.parse(errText);
                     } catch {
-                        err = { error: errText || `HTTP ${res.status}` };
+                        err = {error: errText || `HTTP ${res.status}`};
                     }
-                    console.error(`[API] Error response:`, err);
                     throw new Error(err.error || `HTTP ${res.status}`);
                 }
-                
-                const data = await res.json();
-                console.log(`[API] Success:`, data);
-                return data;
+
+                return await res.json();
             } catch (e) {
-                console.error(`[API] Fetch failed for ${fullUrl}:`, e);
-                // Re-throw with more context
-                if (e instanceof TypeError && e.message.includes('fetch')) {
-                    throw new Error(`Сеть недоступна. Проверь подключение и API URL: ${API_BASE_URL}`);
-                }
+                console.error(`[API] Error:`, e);
                 throw e;
             }
         }
@@ -1766,15 +1834,12 @@
         let adminCatalog = [];
 
         async function loadAdminProductsFromAPI() {
-            if (!currentUser.is_admin) return;
+            // Используем глобальную переменную isAdmin
+            if (!isAdmin) return;
             try {
-                // Load admin products for admin panel (includes products with 0 stock)
                 adminCatalog = await apiRequest('GET', '/api/admin/products');
                 renderAdminProducts();
-                
-                // Refresh public catalog (for main view) - this filters out products with 0 stock
                 await loadCatalogFromAPI();
-                
                 updateAdminStats();
                 return true;
             } catch (e) {
@@ -2330,10 +2395,9 @@
             showToast(t('to_cart_added'));
         }
 
-        // ==================== АДМИН ПАНЕЛЬ ====================
-
-        async function renderAdminPanel() {
-            if (!currentUser.is_admin) {
+         async function renderAdminPanel() {
+            // Используем глобальную переменную isAdmin
+            if (!isAdmin) {
                 showToast('❌ Нет доступа к админ-панели', true);
                 showPage('main');
                 return;
@@ -2877,7 +2941,8 @@
                 document.querySelectorAll('.nav-btn')[2].classList.add('active');
                 loadOrdersFromAPI();
             } else if (page === 'admin') {
-                if (currentUser.is_admin) {
+                // Используем переменную isAdmin вместо currentUser.is_admin
+                if (isAdmin) {
                     document.getElementById('adminPage').style.display = 'block';
                     document.querySelectorAll('.nav-btn')[3].classList.add('active');
                     renderAdminPanel();
@@ -2898,54 +2963,48 @@
             setTimeout(() => toast.style.display = 'none', 2000);
         }
 
-        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+            // В конце файла, замените существующий window.addEventListener на ЭТОТ:
+            window.addEventListener('load', async () => {
+                console.log('=== Mini App Initialization ===');
+                console.log('Telegram WebApp:', typeof tg !== 'undefined' ? 'available' : 'not available');
+                console.log('Current user:', currentUser);
+                console.log('API Base URL:', API_BASE_URL);
 
-        window.addEventListener('load', async () => {
-            console.log('=== Mini App Initialization ===');
-            console.log('Telegram WebApp:', typeof tg !== 'undefined' ? 'available' : 'not available');
-            console.log('Current user:', currentUser);
-            console.log('API Base URL:', API_BASE_URL);
-            console.log('User Agent:', navigator.userAgent);
-            
-            updateCartCount();
-            if (!currentUser.id) {
-                document.getElementById('openFromTelegramHint').style.display = 'flex';
-                console.warn('⚠️ User ID is 0 - open from Telegram bot button!');
-            }
+                updateCartCount();
 
-            // Test API connectivity first
-            try {
-                console.log('Testing API connectivity...');
-                const testRes = await fetch(`${API_BASE_URL}/api/health?_t=${Date.now()}`, {
-                    method: 'GET',
-                    cache: 'no-store',
-                    headers: {
-                        'ngrok-skip-browser-warning': 'true'
-                    }
-                });
-                console.log('API Health check:', testRes.status, testRes.ok);
-                if (!testRes.ok) {
-                    throw new Error(`API недоступен (${testRes.status})`);
+                if (!currentUser.id) {
+                    document.getElementById('openFromTelegramHint').style.display = 'flex';
+                    console.warn('⚠️ User ID is 0 - open from Telegram bot button!');
                 }
-            } catch (e) {
-                console.error('❌ API connectivity test failed:', e);
-                showToast('⚠️ API недоступен. Проверь ngrok и API сервер.', true);
-            }
 
-            await loadCatalogFromAPI();
-            await loadOrdersFromAPI();
+                // Проверяем API
+                try {
+                    const testRes = await fetch(`${API_BASE_URL}/api/health?_t=${Date.now()}`, {
+                        method: 'GET',
+                        headers: {'ngrok-skip-browser-warning': 'true'}
+                    });
+                    console.log('API Health check:', testRes.status);
+                } catch (e) {
+                    console.error('❌ API connectivity test failed:', e);
+                    showToast('⚠️ API недоступен. Проверь ngrok и API сервер.', true);
+                }
 
-            showPage('main');
-            applyTranslations();
-            showToast('👋' + t('welcome'));
+                // ВАЖНО: Сначала проверяем админа!
+                await checkAdminStatus();
 
-            console.log('=== Initialization Complete ===');
-            console.log('Catalog items:', catalog.length);
-            console.log('Orders:', orders.length);
-        });
+                // Потом загружаем данные
+                await loadCatalogFromAPI();
+                await loadOrdersFromAPI();
 
-        // ==================== ЭКСПОРТ ФУНКЦИЙ ====================
+                // Показываем главную страницу
+                showPage('main');
+                applyTranslations();
+                showToast('👋 ' + t('welcome'));
 
+                console.log('=== Initialization Complete ===');
+                console.log('Is Admin:', isAdmin);
+                console.log('Catalog items:', catalog.length);
+            });
         // ==================== ЭКСПОРТ ФУНКЦИЙ ====================
         window.showPage=showPage;
         window.increaseQty=increaseQty;
