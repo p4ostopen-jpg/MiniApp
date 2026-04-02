@@ -997,7 +997,7 @@
 </head>
 <body>
     <div class="container">
-        <!-- Навигация -->
+
         <div class="nav-menu">
             <button class="nav-btn active" onclick="showPage('main')" data-i18n="nav_menu">🔍 Меню</button>
             <button class="nav-btn" onclick="showPage('cart')" data-i18n="nav_cart">🛒 Кошик</button>
@@ -1005,12 +1005,10 @@
             <button class="nav-btn admin-btn" onclick="showPage('admin')" id="adminNavBtn" style="display: none;" data-i18n="nav_admin">👨‍💼 Админ</button>
         </div>
 
-        <!-- Подсказка: открыть из Telegram -->
         <div id="openFromTelegramHint" class="location-permission" style="display:none; margin-bottom:16px;">
             <span data-i18n="open_from_tg">⚠️ Откройте приложение из Telegram (кнопка бота), чтобы сохранялись ваши заказы и ID</span>
         </div>
 
-        <!-- Главная страница с товарами -->
         <div id="mainPage">
             <div class="header">
                 <img src="https://p4ostopen-jpg.github.io/MiniApp/chaser.png"
@@ -1028,7 +1026,6 @@
             <div id="products" class="products-grid"></div>
         </div>
 
-        <!-- Страница корзины -->
         <div id="cartPage" style="display:none;">
             <div class="header">
                 <h1 data-i18n="cart_title">🛒 Кошик</h1>
@@ -1065,7 +1062,6 @@
             </div>
         </div>
 
-        <!-- Страница заказов -->
         <div id="ordersPage" style="display:none;">
             <div class="header">
                 <h1 data-i18n="orders_title">📋 Мої замовлення</h1>
@@ -1075,7 +1071,6 @@
             <div id="orders"></div>
         </div>
 
-        <!-- Страница администратора -->
         <div id="adminPage" style="display:none;">
             <div class="header">
                 <h1 data-i18n="admin_panel">👨‍💼 Панель администратора</h1>
@@ -1133,7 +1128,6 @@
         </div>
     </div>
 
-    <!-- Кнопка корзины -->
     <button class="cart-fab" onclick="showPage('cart')">
         🛒
         <span id="cartCount" class="cart-count">0</span>
@@ -1145,10 +1139,8 @@
         <button class="lang-option" onclick="setLanguage('de')">🇩🇪 Deutsch</button>
     </div>
 
-    <!-- Toast уведомления -->
     <div id="toast" style="display:none;" class="toast"></div>
 
-    <!-- Модальное окно для добавления/редактирования товара -->
     <div id="addProductModal" style="display:none;" class="modal">
         <div class="modal-content">
             <div class="modal-title" id="addProductModalTitle" data-i18n="modal_add_product_title">➕ Добавить новый товар</div>
@@ -1172,7 +1164,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно для обновления остатков -->
     <div id="updateStockModal" style="display:none;" class="modal">
         <div class="modal-content">
             <div class="modal-title" data-i18n="modal_update_stock">📦 Обновить остатки</div>
@@ -1185,7 +1176,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно для удаления товара -->
     <div id="deleteProductModal" style="display:none;" class="modal">
         <div class="modal-content">
             <div class="modal-title" data-i18n="modal_delete_product">❌ Удалить товар</div>
@@ -1210,7 +1200,7 @@
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // Инициализация Telegram WebApp
+
         console.log('=== Telegram WebApp Script Loading ===');
         console.log('window.Telegram:', typeof window.Telegram);
 
@@ -1225,7 +1215,6 @@
             console.log('Telegram initData:', tg.initData ? 'present' : 'missing');
         }
 
-        // Получить user из Telegram — initDataUnsafe или парсинг tgWebAppData из URL hash
         function getTelegramUser() {
             let user = tg.initDataUnsafe?.user;
             if (user && user.id) return user;
@@ -1250,11 +1239,9 @@
 
         const _tgUser = getTelegramUser();
 
-        // ==================== КОНФИГУРАЦИЯ API ====================
         const API_BASE_URL = "https://pleasurelessly-tingly-carlos.ngrok-free.dev";
 
-        // ==================== ДАННЫЕ ====================
-        // is_admin подставляется с API (/api/me) из ADMIN_IDS в .env на сервере
+
         const currentUser = {
             id: _tgUser.id || 0,
             username: _tgUser.username || '',
@@ -1262,7 +1249,6 @@
             is_admin: false
         };
 
-        // ==================== I18N ====================
         const I18N = {
             uk: {
                 nav_menu: '🔍 Меню', nav_cart: '🛒 Кошик', nav_orders: '📋 Замовлення', nav_admin: '👨‍💼 Адмін',
@@ -1512,39 +1498,31 @@
             console.warn('user_id=0: откройте приложение из Telegram (кнопка бота), а не в браузере');
         }
 
-        // Базовый URL для картинок
         const IMAGE_BASE_URL = "https://p4ostopen-jpg.github.io/MiniApp/";
 
-        // Каталог товаров (загружается из API)
         let catalog = [];
 
-        // Корзина пользователя (локальная до checkout)
         let cart = [];
 
-        // Заказы пользователя (из API)
         let orders = [];
 
-        // Все заказы для админа (из API)
         let allOrders = [];
-        // Поддержка чатов с клиентами
+
         let adminChats = [];
         let activeThreadId = null;
         let activeThreadUserId = null;
         let activeChatPollTimer = null;
 
-        // ==================== API ЗАПРОСЫ ====================
 
         async function apiRequest(method, path, body = null) {
-            // Cache-busting timestamp for GET requests (Telegram WebView can be aggressive with caching)
+
             const separator = path.includes('?') ? '&' : '?';
             const cacheBuster = method === 'GET' ? `${separator}_t=${Date.now()}` : '';
             const fullUrl = API_BASE_URL + path + cacheBuster;
 
-            // Important: do NOT send extra request headers (Cache-Control/Pragma/Expires),
-            // otherwise CORS preflight may fail if server doesn't allow them.
             const headers = {
                 'X-User-Id': String(currentUser.id),
-                'ngrok-skip-browser-warning': 'true', // Skip ngrok-free.dev warning page
+                'ngrok-skip-browser-warning': 'true',
             };
             if (body !== null) {
                 headers['Content-Type'] = 'application/json';
@@ -1786,17 +1764,15 @@
             }
         }
 
-        // Separate variable for admin products (includes products with 0 stock)
         let adminCatalog = [];
 
         async function loadAdminProductsFromAPI() {
             if (!currentUser.is_admin) return;
             try {
-                // Load admin products for admin panel (includes products with 0 stock)
+
                 adminCatalog = await apiRequest('GET', '/api/admin/products');
                 renderAdminProducts();
 
-                // Refresh public catalog (for main view) - this filters out products with 0 stock
                 await loadCatalogFromAPI();
 
                 updateAdminStats();
@@ -1808,7 +1784,6 @@
             }
         }
 
-        // ==================== КОРЗИНА (только localStorage - до checkout) ====================
 
         function loadCartFromStorage() {
             const savedCart = localStorage.getItem('cart');
@@ -1826,14 +1801,11 @@
             updateCartCount();
         }
 
-        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
         loadCartFromStorage();
 
-        // Проверяем статус геолокации при загрузке
         checkLocationPermission();
 
-        // ==================== ГЕОЛОКАЦИЯ ====================
 
         function checkLocationPermission() {
             if (navigator.permissions) {
@@ -1855,7 +1827,7 @@
                     await new Promise((resolve) => lm.init(resolve));
                 }
                 if (typeof lm.requestLocation === 'function') {
-                    // Some clients hang forever when GPS is disabled.
+
                     const timeout = new Promise((_, reject) =>
                         setTimeout(() => reject(new Error('LOCATION_TIMEOUT')), 12000)
                     );
@@ -1882,12 +1854,12 @@
         }
 
         async function requestDeviceLocation() {
-            // Prefer Telegram native API (best for iOS/Android in Telegram)
+
             const tgLoc = await requestLocationViaTelegram();
             if (tgLoc && typeof tgLoc.latitude === 'number' && typeof tgLoc.longitude === 'number') {
                 return { latitude: tgLoc.latitude, longitude: tgLoc.longitude };
             }
-            // Fallback to browser API
+
             const coords = await requestLocationViaBrowser();
             return { latitude: coords.latitude, longitude: coords.longitude };
         }
@@ -1904,7 +1876,7 @@
         }
 
         function openLocationSettingsIfPossible() {
-            // Telegram clients may expose settings openers in different versions.
+
             try {
                 if (tg?.LocationManager && typeof tg.LocationManager.openSettings === 'function') {
                     tg.LocationManager.openSettings();
@@ -1914,7 +1886,7 @@
                     tg.openSettings();
                     return true;
                 }
-                // Try platform links as fallback.
+
                 const ua = (navigator.userAgent || '').toLowerCase();
                 if (ua.includes('android')) {
                     window.location.href = 'intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end';
@@ -2010,7 +1982,6 @@
                     }
                 }
 
-                // If location services are disabled on device, try opening settings.
                 if (String(errorMessage).includes('недоступна') || String(errorMessage).includes('запрещен')) {
                     promptEnableLocationSettings();
                     showLocationEnableHint();
@@ -2030,7 +2001,6 @@
             try {
                 showToast('🔄 Определяем адрес...');
 
-                // Пробуем получить адрес через OpenStreetMap
                 const res = await fetch(
                     `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`,
                     {
@@ -2056,7 +2026,6 @@
             }
         }
 
-        // ==================== ТОВАРЫ ====================
 
         function renderProducts() {
             console.log('[renderProducts] Called, catalog length:', catalog?.length || 0);
@@ -2105,7 +2074,6 @@
             }
         }
 
-        // ==================== КОРЗИНА ====================
 
         function addToCart(productId) {
             const qty = parseInt(document.getElementById(`qty_${productId}`).innerText);
@@ -2198,7 +2166,6 @@
             saveCart();
             renderCart();
 
-            // Просто пересчитываем промокод если он есть
             if (document.getElementById('promoCode').value.trim()) {
                 await applyPromo(); // Просто вызываем существующую функцию
             }
@@ -2209,7 +2176,6 @@
             document.getElementById('cartCount').innerText = count;
         }
 
-        // ==================== ЗАКАЗЫ ====================
 
         async function checkout() {
             const location = document.getElementById('location').value.trim();
@@ -2249,7 +2215,6 @@
                 const result = await apiRequest('POST', '/api/orders', orderPayload);
                 if (!result.success) throw new Error('Order failed');
 
-                // Уведомления продавцу/админам отправляет API (tg.sendData закрывал бы Mini App)
 
                 saveCurrentAddress();
                 cart = [];
@@ -2345,7 +2310,6 @@
             showToast(t('to_cart_added'));
         }
 
-        // ==================== АДМИН ПАНЕЛЬ ====================
 
         async function renderAdminPanel() {
             if (!currentUser.is_admin) {
@@ -2580,7 +2544,7 @@
 
         function renderAdminProducts() {
             const container = document.getElementById('adminProductsList');
-            // Use adminCatalog if available, otherwise fall back to catalog
+
             const productsToShow = adminCatalog.length > 0 ? adminCatalog : catalog;
 
             container.innerHTML = productsToShow.map(product => `
@@ -2697,7 +2661,6 @@
             document.getElementById('adminOrdersSection').style.display = 'none';
         }
 
-        // Управление заказами (через API)
         async function confirmOrder(orderId) {
             try {
                 await apiRequest('PUT', `/api/admin/orders/${orderId}/status`, { status: 'confirmed' });
@@ -2740,7 +2703,6 @@
             }
         }
 
-        // Управление товарами
         function showAddProductModal() {
             document.getElementById('editProductId').value = '';
             document.getElementById('addProductModalTitle').innerText = '➕ Добавить новый товар';
@@ -2860,13 +2822,10 @@
             document.getElementById('addProductModal').style.display = 'flex';
         }
 
-        // ==================== МОДАЛЬНЫЕ ОКНА ====================
 
         function hideModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
-
-        // ==================== НАВИГАЦИЯ ====================
 
         function showPage(page) {
             // Скрываем все страницы
@@ -2875,10 +2834,8 @@
             document.getElementById('ordersPage').style.display = 'none';
             document.getElementById('adminPage').style.display = 'none';
 
-            // Убираем активный класс у всех кнопок
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
 
-            // Показываем выбранную страницу
             if (page === 'main') {
                 document.getElementById('mainPage').style.display = 'block';
                 document.querySelectorAll('.nav-btn')[0].classList.add('active');
@@ -2903,7 +2860,6 @@
             }
         }
 
-        // ==================== УТИЛИТЫ ====================
 
         function showToast(text, isError = false) {
             const toast = document.getElementById('toast');
@@ -2912,8 +2868,6 @@
             toast.textContent = text;
             setTimeout(() => toast.style.display = 'none', 2000);
         }
-
-        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
         window.addEventListener('load', async () => {
             console.log('=== Mini App Initialization ===');
@@ -2928,7 +2882,6 @@
                 console.warn('⚠️ User ID is 0 - open from Telegram bot button!');
             }
 
-            // Test API connectivity first
             try {
                 console.log('Testing API connectivity...');
                 const testRes = await fetch(`${API_BASE_URL}/api/health?_t=${Date.now()}`, {
@@ -2961,9 +2914,6 @@
             console.log('Orders:', orders.length);
         });
 
-        // ==================== ЭКСПОРТ ФУНКЦИЙ ====================
-
-        // ==================== ЭКСПОРТ ФУНКЦИЙ ====================
         window.showPage=showPage;
         window.increaseQty=increaseQty;
         window.decreaseQty=decreaseQty;
