@@ -1234,13 +1234,21 @@
                 if (!raw && typeof location !== 'undefined') {
                     const hashParams = new URLSearchParams(location.hash.slice(1));
                     raw = hashParams.get('tgWebAppData') || '';
-                    if (raw) raw = decodeURIComponent(raw);
+                    if (!raw) {
+                        const searchParams = new URLSearchParams(location.search.slice(1));
+                        raw = searchParams.get('tgWebAppData') || '';
+                    }
+                    if (raw) {
+                        try { raw = decodeURIComponent(raw); } catch (_) {}
+                    }
                 }
                 if (raw) {
                     const params = new URLSearchParams(raw);
                     let userStr = params.get('user');
                     if (userStr) {
-                        if (!userStr.startsWith('{')) userStr = decodeURIComponent(userStr);
+                        if (!userStr.startsWith('{')) {
+                            try { userStr = decodeURIComponent(userStr); } catch (_) {}
+                        }
                         user = JSON.parse(userStr);
                     }
                 }
