@@ -1258,20 +1258,6 @@
             first_name: _tgUser.first_name || 'Пользователь',
             is_admin: false
         };
-        fetch(`${API_BASE_URL}/api/me`, {
-            headers: {
-                "X-User-Id": currentUser.id
-            }
-        })
-            .then(res => res.json())
-            .then(data => {
-                currentUser.is_admin = data.is_admin;
-
-                document.querySelectorAll('.admin-btn').forEach(el => {
-                    el.style.display = currentUser.is_admin ? 'block' : 'none';
-                });
-            })
-            .catch(err => console.error(err));
 
         const I18N = {
             uk: {
@@ -1553,6 +1539,7 @@
             // otherwise CORS preflight may fail if server doesn't allow them.
             const headers = {
                 'X-User-Id': String(currentUser.id),
+                'X-Telegram-Init-Data': (tg && tg.initData) ? tg.initData : '',
                 'ngrok-skip-browser-warning': 'true', // Skip ngrok-free.dev warning page
             };
             if (body !== null) {
@@ -1815,14 +1802,31 @@
 
         loadCartFromStorage();
 
-        // Показываем кнопку админа если пользователь админ
-        if (currentUser.is_admin) {
-            console.log('✅ Админ авторизован, показываем панель');
-            document.getElementById('adminNavBtn').style.display = 'block';
-            document.getElementById('adminWelcome').innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
-        } else {
-            console.log('❌ Не админ, панель скрыта');
+        function updateAdminVisibility() {
+            const adminBtn = document.getElementById('adminNavBtn');
+            if (!adminBtn) return;
+            if (currentUser.is_admin) {
+                console.log('✅ Админ авторизован, показываем панель');
+                adminBtn.style.display = 'block';
+                document.getElementById('adminWelcome').innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
+            } else {
+                console.log('❌ Не админ, панель скрыта');
+                adminBtn.style.display = 'none';
+            }
         }
+
+        async function loadCurrentUserRole() {
+            try {
+                const me = await apiRequest('GET', '/api/me');
+                currentUser.is_admin = !!(me && me.is_admin);
+                updateAdminVisibility();
+            } catch (e) {
+                currentUser.is_admin = false;
+                updateAdminVisibility();
+            }
+        }
+
+        updateAdminVisibility();
 
         // Проверяем статус геолокации при загрузке
         checkLocationPermission();
@@ -2068,6 +2072,7 @@
         async function refreshMain() {
             await loadCatalogFromAPI();
             await loadOrdersFromAPI();
+            await loadCurrentUserRole();
             if (currentUser.is_admin) {
                 await loadAdminChats();
                 setInterval(async () => {
