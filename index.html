@@ -1250,20 +1250,29 @@
 
         const _tgUser = getTelegramUser();
 
-        // ==================== КОНФИГУРАЦИЯ API ====================
         const API_BASE_URL = "https://pleasurelessly-tingly-carlos.ngrok-free.dev";
-
-        // ==================== ДАННЫЕ ====================
-        const ADMIN_IDS = [539040973];
 
         const currentUser = {
             id: _tgUser.id || 0,
             username: _tgUser.username || '',
             first_name: _tgUser.first_name || 'Пользователь',
-            is_admin: ADMIN_IDS.includes(_tgUser.id || 0)
+            is_admin: false
         };
+        fetch(`${API_BASE_URL}/api/me`, {
+            headers: {
+                "X-User-Id": currentUser.id
+            }
+        })
+            .then(res => res.json())
+            .then(data => {
+                currentUser.is_admin = data.is_admin;
 
-        // ==================== I18N ====================
+                document.querySelectorAll('.admin-btn').forEach(el => {
+                    el.style.display = currentUser.is_admin ? 'block' : 'none';
+                });
+            })
+            .catch(err => console.error(err));
+
         const I18N = {
             uk: {
                 nav_menu: '🔍 Меню', nav_cart: '🛒 Кошик', nav_orders: '📋 Замовлення', nav_admin: '👨‍💼 Адмін',
