@@ -1254,13 +1254,12 @@
         const API_BASE_URL = "https://pleasurelessly-tingly-carlos.ngrok-free.dev";
 
         // ==================== ДАННЫЕ ====================
-        const ADMIN_IDS = [539040973,905385553,8056418913];
-
+        // is_admin подставляется с API (/api/me) из ADMIN_IDS в .env на сервере
         const currentUser = {
             id: _tgUser.id || 0,
             username: _tgUser.username || '',
             first_name: _tgUser.first_name || 'Пользователь',
-            is_admin: ADMIN_IDS.includes(_tgUser.id || 0)
+            is_admin: false
         };
 
         // ==================== I18N ====================
@@ -1589,6 +1588,30 @@
             }
         }
 
+        async function refreshSessionFromApi() {
+            if (!currentUser.id) {
+                currentUser.is_admin = false;
+                return;
+            }
+            try {
+                const data = await apiRequest('GET', '/api/me');
+                currentUser.is_admin = !!(data && data.is_admin);
+            } catch (e) {
+                console.warn('refreshSessionFromApi:', e);
+                currentUser.is_admin = false;
+            }
+            const nav = document.getElementById('adminNavBtn');
+            if (currentUser.is_admin) {
+                console.log('✅ Админ: панель доступна');
+                if (nav) nav.style.display = 'block';
+                const w = document.getElementById('adminWelcome');
+                if (w) w.innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
+            } else {
+                console.log('❌ Не админ, панель скрыта');
+                if (nav) nav.style.display = 'none';
+            }
+        }
+
         let appliedDiscount = 0;
         let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
         let recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
@@ -1806,15 +1829,6 @@
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
         loadCartFromStorage();
-
-        // Показываем кнопку админа если пользователь админ
-        if (currentUser.is_admin) {
-            console.log('✅ Админ авторизован, показываем панель');
-            document.getElementById('adminNavBtn').style.display = 'block';
-            document.getElementById('adminWelcome').innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
-        } else {
-            console.log('❌ Не админ, панель скрыта');
-        }
 
         // Проверяем статус геолокации при загрузке
         checkLocationPermission();
@@ -2932,6 +2946,8 @@
                 console.error('❌ API connectivity test failed:', e);
                 showToast('⚠️ API недоступен. Проверь ngrok и API сервер.', true);
             }
+
+            await refreshSessionFromApi();
 
             await loadCatalogFromAPI();
             await loadOrdersFromAPI();
