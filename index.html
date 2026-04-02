@@ -1258,7 +1258,8 @@
                 if (typeof location !== 'undefined' && location.hash) {
                     const hashParams = new URLSearchParams(location.hash.slice(1));
                     const raw = hashParams.get('tgWebAppData') || '';
-                    if (raw) return decodeURIComponent(raw);
+                    // Keep raw value for signature verification on backend.
+                    if (raw) return raw;
                 }
             } catch (e) {
                 console.warn('getTelegramInitDataRaw fallback failed:', e);
@@ -1523,30 +1524,23 @@
             console.warn('user_id=0: откройте приложение из Telegram (кнопка бота), а не в браузере');
         }
 
-        // Базовый URL для картинок
         const IMAGE_BASE_URL = "https://p4ostopen-jpg.github.io/MiniApp/";
 
-        // Каталог товаров (загружается из API)
         let catalog = [];
 
-        // Корзина пользователя (локальная до checkout)
         let cart = [];
 
-        // Заказы пользователя (из API)
         let orders = [];
 
-        // Все заказы для админа (из API)
         let allOrders = [];
-        // Поддержка чатов с клиентами
+
         let adminChats = [];
         let activeThreadId = null;
         let activeThreadUserId = null;
         let activeChatPollTimer = null;
 
-        // ==================== API ЗАПРОСЫ ====================
 
         async function apiRequest(method, path, body = null) {
-            // Cache-busting timestamp for GET requests (Telegram WebView can be aggressive with caching)
             const separator = path.includes('?') ? '&' : '?';
             const cacheBuster = method === 'GET' ? `${separator}_t=${Date.now()}` : '';
             const fullUrl = API_BASE_URL + path + cacheBuster;
