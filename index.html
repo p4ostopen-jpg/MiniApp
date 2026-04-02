@@ -1234,21 +1234,13 @@
                 if (!raw && typeof location !== 'undefined') {
                     const hashParams = new URLSearchParams(location.hash.slice(1));
                     raw = hashParams.get('tgWebAppData') || '';
-                    if (!raw) {
-                        const searchParams = new URLSearchParams(location.search.slice(1));
-                        raw = searchParams.get('tgWebAppData') || '';
-                    }
-                    if (raw) {
-                        try { raw = decodeURIComponent(raw); } catch (_) {}
-                    }
+                    if (raw) raw = decodeURIComponent(raw);
                 }
                 if (raw) {
                     const params = new URLSearchParams(raw);
                     let userStr = params.get('user');
                     if (userStr) {
-                        if (!userStr.startsWith('{')) {
-                            try { userStr = decodeURIComponent(userStr); } catch (_) {}
-                        }
+                        if (!userStr.startsWith('{')) userStr = decodeURIComponent(userStr);
                         user = JSON.parse(userStr);
                     }
                 }
@@ -1258,32 +1250,20 @@
 
         const _tgUser = getTelegramUser();
 
-        function getTelegramInitDataRaw() {
-            // Primary source (native Telegram clients)
-            if (tg && tg.initData) return tg.initData;
-            // Fallback source (Telegram Web can pass via URL hash)
-            try {
-                if (typeof location !== 'undefined' && location.hash) {
-                    const hashParams = new URLSearchParams(location.hash.slice(1));
-                    const raw = hashParams.get('tgWebAppData') || '';
-                    // Keep raw value for signature verification on backend.
-                    if (raw) return raw;
-                }
-            } catch (e) {
-                console.warn('getTelegramInitDataRaw fallback failed:', e);
-            }
-            return '';
-        }
-
+        // ==================== КОНФИГУРАЦИЯ API ====================
         const API_BASE_URL = "https://pleasurelessly-tingly-carlos.ngrok-free.dev";
+
+        // ==================== ДАННЫЕ ====================
+        const ADMIN_IDS = [539040973];
 
         const currentUser = {
             id: _tgUser.id || 0,
             username: _tgUser.username || '',
             first_name: _tgUser.first_name || 'Пользователь',
-            is_admin: false
+            is_admin: ADMIN_IDS.includes(_tgUser.id || 0)
         };
 
+        // ==================== I18N ====================
         const I18N = {
             uk: {
                 nav_menu: '🔍 Меню', nav_cart: '🛒 Кошик', nav_orders: '📋 Замовлення', nav_admin: '👨‍💼 Адмін',
@@ -1532,23 +1512,30 @@
             console.warn('user_id=0: откройте приложение из Telegram (кнопка бота), а не в браузере');
         }
 
+        // Базовый URL для картинок
         const IMAGE_BASE_URL = "https://p4ostopen-jpg.github.io/MiniApp/";
 
+        // Каталог товаров (загружается из API)
         let catalog = [];
 
+        // Корзина пользователя (локальная до checkout)
         let cart = [];
 
+        // Заказы пользователя (из API)
         let orders = [];
 
+        // Все заказы для админа (из API)
         let allOrders = [];
-
+        // Поддержка чатов с клиентами
         let adminChats = [];
         let activeThreadId = null;
         let activeThreadUserId = null;
         let activeChatPollTimer = null;
 
+        // ==================== API ЗАПРОСЫ ====================
 
         async function apiRequest(method, path, body = null) {
+            // Cache-busting timestamp for GET requests (Telegram WebView can be aggressive with caching)
             const separator = path.includes('?') ? '&' : '?';
             const cacheBuster = method === 'GET' ? `${separator}_t=${Date.now()}` : '';
             const fullUrl = API_BASE_URL + path + cacheBuster;
@@ -1557,7 +1544,6 @@
             // otherwise CORS preflight may fail if server doesn't allow them.
             const headers = {
                 'X-User-Id': String(currentUser.id),
-                'X-Telegram-Init-Data': getTelegramInitDataRaw(),
                 'ngrok-skip-browser-warning': 'true', // Skip ngrok-free.dev warning page
             };
             if (body !== null) {
@@ -1820,31 +1806,14 @@
 
         loadCartFromStorage();
 
-        function updateAdminVisibility() {
-            const adminBtn = document.getElementById('adminNavBtn');
-            if (!adminBtn) return;
-            if (currentUser.is_admin) {
-                console.log('✅ Админ авторизован, показываем панель');
-                adminBtn.style.display = 'block';
-                document.getElementById('adminWelcome').innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
-            } else {
-                console.log('❌ Не админ, панель скрыта');
-                adminBtn.style.display = 'none';
-            }
+        // Показываем кнопку админа если пользователь админ
+        if (currentUser.is_admin) {
+            console.log('✅ Админ авторизован, показываем панель');
+            document.getElementById('adminNavBtn').style.display = 'block';
+            document.getElementById('adminWelcome').innerHTML = `${t('admin_welcome')} ${currentUser.first_name}!`;
+        } else {
+            console.log('❌ Не админ, панель скрыта');
         }
-
-        async function loadCurrentUserRole() {
-            try {
-                const me = await apiRequest('GET', '/api/me');
-                currentUser.is_admin = !!(me && me.is_admin);
-                updateAdminVisibility();
-            } catch (e) {
-                currentUser.is_admin = false;
-                updateAdminVisibility();
-            }
-        }
-
-        updateAdminVisibility();
 
         // Проверяем статус геолокации при загрузке
         checkLocationPermission();
@@ -2090,7 +2059,6 @@
         async function refreshMain() {
             await loadCatalogFromAPI();
             await loadOrdersFromAPI();
-            await loadCurrentUserRole();
             if (currentUser.is_admin) {
                 await loadAdminChats();
                 setInterval(async () => {
