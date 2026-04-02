@@ -1250,6 +1250,22 @@
 
         const _tgUser = getTelegramUser();
 
+        function getTelegramInitDataRaw() {
+            // Primary source (native Telegram clients)
+            if (tg && tg.initData) return tg.initData;
+            // Fallback source (Telegram Web can pass via URL hash)
+            try {
+                if (typeof location !== 'undefined' && location.hash) {
+                    const hashParams = new URLSearchParams(location.hash.slice(1));
+                    const raw = hashParams.get('tgWebAppData') || '';
+                    if (raw) return decodeURIComponent(raw);
+                }
+            } catch (e) {
+                console.warn('getTelegramInitDataRaw fallback failed:', e);
+            }
+            return '';
+        }
+
         const API_BASE_URL = "https://pleasurelessly-tingly-carlos.ngrok-free.dev";
 
         const currentUser = {
@@ -1539,7 +1555,7 @@
             // otherwise CORS preflight may fail if server doesn't allow them.
             const headers = {
                 'X-User-Id': String(currentUser.id),
-                'X-Telegram-Init-Data': (tg && tg.initData) ? tg.initData : '',
+                'X-Telegram-Init-Data': getTelegramInitDataRaw(),
                 'ngrok-skip-browser-warning': 'true', // Skip ngrok-free.dev warning page
             };
             if (body !== null) {
