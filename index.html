@@ -1442,7 +1442,7 @@
             'Sonder Q2 Pod Vape Kit': { uk: 'Sonder Q2 Pod Vape Kit', ru: 'Sonder Q2 Pod Vape Kit', de: 'Sonder Q2 Pod Vape Kit' },
             'THC Vape Kit': { uk: 'THC Vape Kit', ru: 'THC Vape Kit', de: 'THC Vape Kit' },
             'Quiz 4000 5%': { uk: 'Quiz 4000 5%', ru: 'Quiz 4000 5%', de: 'Quiz 4000 5%' }
-            
+
         };
         function tn(name) { return (PRODUCT_NAME_I18N[name] && PRODUCT_NAME_I18N[name][currentLang]) || name; }
         function ts(status) {
@@ -1707,14 +1707,15 @@
             }
 
             try {
-                const r = await apiRequest('POST', '/api/promo/validate', {code, subtotal});
+                const r = await apiRequest('POST', '/api/promo/check', {code, subtotal});
                 if (r.valid) {
                     appliedDiscount = r.discount;
                     document.getElementById('promoStatus').style.display = 'block';
-                    document.getElementById('promoStatus').textContent = `✅ Знижка ${r.discount} €`;
+                    const ul = typeof r.uses_left === 'number' ? ` · Залишилось: ${r.uses_left}` : '';
+                    document.getElementById('promoStatus').textContent = `✅ Знижка ${r.discount} €${ul}`;
                     document.getElementById('promoStatus').style.color = '#2d7a4b';
                     renderCart();
-                    if (!silent) showToast(`Промокод використано! Знижка ${r.discount} €`);
+                    if (!silent) showToast(`Промокод застосовано: −${r.discount} €${ul}`);
                 } else {
                     appliedDiscount = 0;
                     document.getElementById('promoStatus').textContent = '❌ ' + (r.error || 'Такий промо ще не додали');
@@ -2206,13 +2207,12 @@
                 })),
                 notes: document.getElementById('orderNotes').value.trim(),
                 delivery_slot: document.getElementById('deliverySlot').value || '',
-                promo_code: document.getElementById('promoCode').value.trim() || '',
-                discount_amount: appliedDiscount
+                promo_code: document.getElementById('promoCode').value.trim().toUpperCase() || ''
             };
 
             try {
                 const result = await apiRequest('POST', '/api/orders', orderPayload);
-                if (!result.success) throw new Error('Order failed');
+                if (!result.success) throw new Error(result.error || 'Order failed');
 
 
                 saveCurrentAddress();
@@ -2231,7 +2231,8 @@
                 await loadOrdersFromAPI();
             } catch (e) {
                 console.error('Ошибка создания заказа:', e);
-                showToast(t('err_create_order'), true);
+                const msg = (e && e.message) ? e.message : t('err_create_order');
+                showToast(msg, true);
             }
         }
 
