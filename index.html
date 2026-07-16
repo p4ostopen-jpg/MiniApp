@@ -12,136 +12,6 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
-        /* Категории - горизонтальный скролл */
-        .categories-scroll {
-            display: flex;
-            gap: 12px;
-            overflow-x: auto;
-            padding: 8px 0 20px 0;
-            margin-bottom: 4px;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .categories-scroll::-webkit-scrollbar {
-            display: none;
-        }
-
-        .category-btn {
-            flex-shrink: 0;
-            padding: 10px 18px;
-            border: 2px solid #eef2f5;
-            border-radius: 20px;
-            background: white;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-
-        .category-btn.active {
-            background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
-            color: white;
-            border-color: #4a6fa5;
-        }
-
-        .category-btn .count {
-            background: #eef2f5;
-            color: #6b7b8c;
-            padding: 0 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
-        .category-btn.active .count {
-            background: rgba(255, 255, 255, 0.25);
-            color: white;
-        }
-
-        /* Flip card */
-        .product-card {
-            perspective: 1000px;
-            cursor: pointer;
-            position: relative;
-            min-height: 280px;
-        }
-
-        .product-card-inner {
-            position: relative;
-            width: 100%;
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            transform-style: preserve-3d;
-        }
-
-        .product-card.flipped .product-card-inner {
-            transform: rotateY(180deg);
-        }
-
-        .product-card-front,
-        .product-card-back {
-            backface-visibility: hidden;
-            width: 100%;
-            min-height: 280px;
-            display: flex;
-            flex-direction: column;
-            background: white;
-            border-radius: 24px;
-            padding: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-        }
-
-        .product-card-back {
-            position: absolute;
-            top: 0;
-            left: 0;
-            transform: rotateY(180deg);
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            background: #f8fafc;
-            border: 2px solid #eef2f5;
-        }
-
-        .product-card-back .desc {
-            font-size: 14px;
-            color: #1a2639;
-            line-height: 1.6;
-            padding: 8px;
-            max-height: 160px;
-            overflow-y: auto;
-        }
-
-        .product-card-back .tap-hint {
-            color: #6b7b8c;
-            font-size: 12px;
-            margin-top: 12px;
-        }
-
-        .product-card .favorite-btn {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            font-size: 18px;
-            cursor: pointer;
-            z-index: 5;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
-
-        .product-card .product-actions {
-            position: relative;
-            z-index: 3;
-        }
-
         body {
             background: linear-gradient(145deg, #f6f9fc 0%, #e6f0f5 100%);
             min-height: 100vh;
@@ -1147,7 +1017,6 @@
                 <h1>Chaser SL</h1>
                 <p data-i18n="main_subtitle">Ароматизатори для под-систем</p>
             </div>
-            <div id="categoriesContainer" class="categories-scroll"></div>
             <input type="text" id="searchProducts" class="search-bar" placeholder="🔍 Пошук товарів..." data-i18n-placeholder="search_placeholder" oninput="filterProducts()">
             <div class="pull-refresh-hint" id="pullRefreshHint" onclick="refreshMain()" style="cursor:pointer;" data-i18n="refresh_click">↓ Натисніть для оновлення</div>
             <div id="productsLoading" class="loading-overlay" style="display:none;">
@@ -1329,85 +1198,8 @@
         </div>
     </div>
 
-
-
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-
-                // ============================================
-        // НОВЫЕ ФУНКЦИИ ДЛЯ КАТЕГОРИЙ И FLIP КАРТОЧЕК
-        // ============================================
-
-        let currentCategoryId = null;
-        let allProducts = [];
-
-        // Загрузка категорий
-        async function loadCategories() {
-            try {
-                const categories = await apiRequest('GET', '/api/categories');
-                const container = document.getElementById('categoriesContainer');
-                if (!container) return;
-
-                const totalCount = allProducts.length || catalog.length || 0;
-                container.innerHTML = `
-                    <button class="category-btn ${!currentCategoryId ? 'active' : ''}"
-                            onclick="selectCategory(null)">
-                        🏠 Все <span class="count">${totalCount}</span>
-                    </button>
-                    ${categories.map(c => `
-                        <button class="category-btn ${currentCategoryId === c.id ? 'active' : ''}"
-                                onclick="selectCategory(${c.id})">
-                            ${c.icon || '📦'} ${c.name} <span class="count">${c.product_count || 0}</span>
-                        </button>
-                    `).join('')}
-                `;
-                return categories;
-            } catch (e) {
-                console.error('Ошибка загрузки категорий:', e);
-                return [];
-            }
-        }
-
-        async function selectCategory(categoryId) {
-            currentCategoryId = categoryId;
-
-            // Обновляем активную кнопку
-            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-            const btns = document.querySelectorAll('.category-btn');
-            if (categoryId === null) {
-                if (btns[0]) btns[0].classList.add('active');
-            } else {
-                btns.forEach(b => {
-                    if (b.onclick && b.onclick.toString().includes(`selectCategory(${categoryId})`)) {
-                        b.classList.add('active');
-                    }
-                });
-            }
-
-            await loadProductsByCategory(categoryId);
-        }
-
-        async function loadProductsByCategory(categoryId) {
-            const url = categoryId ? `/api/products/category/${categoryId}` : '/api/products';
-            try {
-                const products = await apiRequest('GET', url);
-                allProducts = products;
-                catalog = products;
-                renderProductsToContainer(products, document.getElementById('products'));
-                return products;
-            } catch (e) {
-                console.error('Ошибка загрузки товаров категории:', e);
-                return [];
-            }
-        }
-
-        // Функция переворота карточки
-        function flipCard(productId) {
-            const card = document.getElementById(`product_${productId}`);
-            if (card) {
-                card.classList.toggle('flipped');
-            }
-        }
 
         console.log('=== Telegram WebApp Script Loading ===');
         console.log('window.Telegram:', typeof window.Telegram);
@@ -1653,15 +1445,15 @@
             'Флірт': { uk: 'Флірт', ru: 'Флирт', de: 'Flirten' },
             'Потрійні Ягоди': { uk: 'Потрійні Ягоди', ru: 'Тройные Ягоды', de: 'Dreifache Beeren' },
 
-            //'Vozol Star 20000 5%': { uk: 'Vozol Star 20000 5%', ru: 'Vozol Star 20000 5%', de: 'Vozol Star 20000 5%' },
-            //'Quiz 4000 5%': { uk: 'Quiz 4000 5%', ru: 'Quiz 4000 5%', de: 'Quiz 4000 5%' },
-            //'WASPE 100k 4in1 5%': { uk: 'WASPE 100к 4in1 5%', ru: 'WASPE 100к 4in1 5%', de: 'WASPE 100k 4in1 5%' },
-            //'ARCHER 60k 5%': { uk: 'ARCHER 60к 5%', ru: 'ARCHER 60к 5%', de: 'ARCHER 60k 5%' },
-            //'WASPE 40k 5%': { uk: 'WASPE 40к 5%', ru: 'WASPE 40к 5%', de: 'WASPE 40k 5%' },
-            //'Sonder Q2 Pod Vape Kit': { uk: 'Sonder Q2 Pod Vape Kit', ru: 'Sonder Q2 Pod Vape Kit', de: 'Sonder Q2 Pod Vape Kit' },
-            //'THC Vape Kit': { uk: 'THC Vape Kit', ru: 'THC Vape Kit', de: 'THC Vape Kit' },
-            //'Снюс SKRUF': { uk: 'Снюс SKRUF', ru: 'Снюс SKRUF', de: 'Snus SKRUF' },
-            //'Снюс VELO': { uk: 'Снюс VELO', ru: 'Снюс VELO', de: 'Snus VELO' }
+            'Vozol Star 20000 5%': { uk: 'Vozol Star 20000 5%', ru: 'Vozol Star 20000 5%', de: 'Vozol Star 20000 5%' },
+            'Quiz 4000 5%': { uk: 'Quiz 4000 5%', ru: 'Quiz 4000 5%', de: 'Quiz 4000 5%' },
+            'WASPE 100k 4in1 5%': { uk: 'WASPE 100к 4in1 5%', ru: 'WASPE 100к 4in1 5%', de: 'WASPE 100k 4in1 5%' },
+            'ARCHER 60k 5%': { uk: 'ARCHER 60к 5%', ru: 'ARCHER 60к 5%', de: 'ARCHER 60k 5%' },
+            'WASPE 40k 5%': { uk: 'WASPE 40к 5%', ru: 'WASPE 40к 5%', de: 'WASPE 40k 5%' },
+            'Sonder Q2 Pod Vape Kit': { uk: 'Sonder Q2 Pod Vape Kit', ru: 'Sonder Q2 Pod Vape Kit', de: 'Sonder Q2 Pod Vape Kit' },
+            'THC Vape Kit': { uk: 'THC Vape Kit', ru: 'THC Vape Kit', de: 'THC Vape Kit' },
+            'Снюс SKRUF': { uk: 'Снюс SKRUF', ru: 'Снюс SKRUF', de: 'Snus SKRUF' },
+            'Снюс VELO': { uk: 'Снюс VELO', ru: 'Снюс VELO', de: 'Snus VELO' }
 
         };
         function tn(name) { return (PRODUCT_NAME_I18N[name] && PRODUCT_NAME_I18N[name][currentLang]) || name; }
@@ -1820,17 +1612,21 @@
             loading.style.display = 'block';
             grid.style.opacity = '0.5';
 
+            console.log('[loadCatalog] Starting...', { API_BASE_URL, currentUser });
+
             try {
-                allProducts = await apiRequest('GET', '/api/products');
-                catalog = allProducts;
+                catalog = await apiRequest('GET', '/api/products');
+                console.log('[loadCatalog] Received products:', catalog);
 
-                // Загружаем категории после получения товаров
-                await loadCategories();
+                if (!catalog || !Array.isArray(catalog)) {
+                    throw new Error('Некорректный формат ответа от API');
+                }
 
-                if (!allProducts || allProducts.length === 0) {
+                if (catalog.length === 0) {
+                    console.warn('[loadCatalog] Catalog is empty!');
                     grid.innerHTML = `<div class="empty-state">${t('empty_products')}</div>`;
                 } else {
-                    renderProductsToContainer(allProducts, grid);
+                    renderProducts();
                 }
                 return true;
             } catch (e) {
@@ -1844,6 +1640,8 @@
                         <button onclick="loadCatalogFromAPI()" style="margin-top:12px;padding:8px 16px;background:#4a6fa5;color:white;border:none;border-radius:12px;cursor:pointer;">
                             🔄 Повторить
                         </button>
+                        <br><br>
+                        <small style="color:#999;">API: ${API_BASE_URL}</small>
                     </div>`;
                 return false;
             } finally {
@@ -1869,46 +1667,30 @@
                 container.innerHTML = `<div class="empty-state">${t('empty_search')}</div>`;
                 return;
             }
-
             container.innerHTML = products.map(product => {
                 const isAvailable = product.stock > 0;
                 const isFav = favorites.includes(product.id);
-                const description = product.description || '📝 Описание отсутствует';
-                const productId = product.id;
-
                 return `
-                    <div class="product-card" id="product_${productId}" onclick="flipCard(${productId})">
-                        <div class="product-card-inner">
-                            <div class="product-card-front">
-                                <button class="favorite-btn" onclick="event.stopPropagation(); toggleFavorite(${productId})">${isFav ? '❤️' : '🤍'}</button>
-                                <div class="product-image">
-                                    <img src="${product.image_url}" alt="${product.name}"
-                                         style="width:100%;height:140px;object-fit:cover;border-radius:16px;"
-                                         onerror="this.style.display='none';this.parentElement.innerHTML='${product.image || '🍦'}';">
-                                </div>
-                                <div class="product-name">${tn(product.name)}</div>
-                                <div class="product-price">${product.price} €</div>
-                                <div class="product-stock">${isAvailable ? `${t('in_stock')}: ${product.stock}` : t('out_of_stock')}</div>
-                                ${isAvailable ? `
-                                <div class="product-actions" onclick="event.stopPropagation();">
-                                    <div class="qty-selector">
-                                        <button class="qty-btn" onclick="event.stopPropagation(); decreaseQty(${productId})">−</button>
-                                        <span id="qty_${productId}" class="quantity">1</span>
-                                        <button class="qty-btn" onclick="event.stopPropagation(); increaseQty(${productId})">+</button>
-                                    </div>
-                                    <button class="add-btn" onclick="event.stopPropagation(); addToCart(${productId})">➕</button>
-                                </div>` : `
-                                <button class="add-btn disabled" disabled onclick="event.stopPropagation();">${t('out_of_stock')}</button>
-                                `}
-                            </div>
-                            <div class="product-card-back">
-                                <div style="font-size:28px;margin-bottom:8px;">📝</div>
-                                <div class="desc">${description}</div>
-                                <div class="tap-hint">👆 Нажмите для возврата</div>
-                            </div>
-                        </div>
+                <div class="product-card">
+                    <button class="favorite-btn" onclick="toggleFavorite(${product.id})">${isFav ? '❤️' : '🤍'}</button>
+                    <div class="product-image">
+                        <img src="${product.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" onerror="this.style.display='none';this.parentElement.innerHTML='${product.image || '🍦'}';">
                     </div>
-                `;
+                    <div class="product-name">${tn(product.name)}</div>
+                    <div class="product-price">${product.price} €</div>
+                    <div class="product-stock">${isAvailable ? `${t('in_stock')}: ${product.stock}` : t('out_of_stock')}</div>
+                    ${isAvailable ? `
+                    <div class="product-actions">
+                        <div class="qty-selector">
+                            <button class="qty-btn" onclick="decreaseQty(${product.id})">−</button>
+                            <span id="qty_${product.id}" class="quantity">1</span>
+                            <button class="qty-btn" onclick="increaseQty(${product.id})">+</button>
+                        </div>
+                        <button class="add-btn" onclick="addToCart(${product.id})">➕</button>
+                    </div>` : `
+                    <button class="add-btn disabled" disabled>${t('out_of_stock')}</button>
+                    `}
+                </div>`;
             }).join('');
         }
 
